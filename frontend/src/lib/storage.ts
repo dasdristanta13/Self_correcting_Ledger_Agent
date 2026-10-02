@@ -4,6 +4,6 @@ export function readJSON<T>(key: string, fallback: T): T {
     return raw == null ? fallback : (JSON.parse(raw) as T);
   } catch { return fallback; }
 }
-export function writeJSON(key: string, value: unknown): void {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* blocked or full: the page still works */ }
+export function writeJSON(key: string, value: unknown): boolean {
+  try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; /* blocked or full: the page still works */ }
 }

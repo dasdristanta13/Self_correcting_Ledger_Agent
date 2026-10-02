@@ -42,7 +42,7 @@ export const defaultSettings = (): Record<string, SettingValue> => Object.fromEn
 export function loadSettings(): Record<string, SettingValue> {
   const stored = readJSON<Record<string, unknown>>(KEY, {});
   const out = defaultSettings();
-  if (!stored || typeof stored !== "object") return out;
+  if (!stored || typeof stored !== "object" || Array.isArray(stored)) return out;
   for (const d of ALL) {
     const v = stored[d.key];
     if (d.kind === "toggle" && typeof v === "boolean") out[d.key] = v;
@@ -51,6 +51,6 @@ export function loadSettings(): Record<string, SettingValue> {
   return out;
 }
 
-export function saveSettings(s: Record<string, SettingValue>): void {
-  writeJSON(KEY, s);
+export function saveSettings(s: Record<string, SettingValue>): boolean {
+  return writeJSON(KEY, s);
 }

@@ -4,6 +4,8 @@ import { Switch } from "../components/ui/Switch";
 import { Tabs, tabIds } from "../components/ui/Tabs";
 import { defaultSettings, loadSettings, saveSettings, SETTING_GROUPS, type SettingValue } from "../lib/settings";
 
+const FAIL = "Couldn't save in this browser. Your changes apply to this session only.";
+
 export function SettingsView() {
   const [saved, setSaved] = useState(loadSettings);
   const [draft, setDraft] = useState(saved);
@@ -17,7 +19,7 @@ export function SettingsView() {
       <PageHeader title="Settings" sub="Configure extraction, validation and agent behaviour."
         actions={<>
           <button type="button" className="btn" onClick={() => { setDraft(defaultSettings()); setNote(null); }}>Reset to defaults</button>
-          <button type="button" className="btn btn-primary" disabled={!dirty} onClick={() => { saveSettings(draft); setSaved(draft); setNote("Saved in this browser"); }}>Save changes</button>
+          <button type="button" className="btn btn-primary" disabled={!dirty} onClick={() => { if (saveSettings(draft)) { setSaved(draft); setNote("Saved in this browser"); } else setNote(FAIL); }}>Save changes</button>
         </>} />
       <p className="banner">Preview: these preferences are stored in this browser and are not yet applied by the agent. Server-side defaults live in <code>configs/default.yaml</code>.</p>
       <Tabs label="Settings sections" value={group} onChange={setGroup} idBase="set" tabs={Object.keys(SETTING_GROUPS).map((g) => ({ id: g, label: g }))} />
@@ -33,7 +35,7 @@ export function SettingsView() {
           </div>
         ))}
       </section>
-      {note && <p role="status" className="muted note">{note}</p>}
+      {note && <p role={note === FAIL ? "alert" : "status"} className="muted note">{note}</p>}
     </>
   );
 }

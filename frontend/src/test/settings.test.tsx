@@ -2,6 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadSettings, SETTING_GROUPS } from "../lib/settings";
+import { writeJSON } from "../lib/storage";
 import { renderAt } from "./helpers";
 
 vi.mock("../api/client", async () => {
@@ -31,6 +32,15 @@ describe("settings storage", () => {
   it("falls back to defaults when localStorage throws (Review Focus 5)", () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
     expect(loadSettings().top_k).toBe("5");
+  });
+  it("falls back to defaults when the stored value is an array", () => {
+    localStorage.setItem("ledger.settings", JSON.stringify(["top_k"]));
+    expect(loadSettings().top_k).toBe("5");
+  });
+  it("writeJSON reports whether the write succeeded", () => {
+    expect(writeJSON("k", { a: 1 })).toBe(true);
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
+    expect(writeJSON("k", { a: 1 })).toBe(false);
   });
   it("every select default is one of its options", () => {
     for (const d of Object.values(SETTING_GROUPS).flat()) if (d.kind === "select") expect(d.options).toContain(d.default);
@@ -69,7 +79,11 @@ describe("SettingsView", () => {
     renderAt("#/settings");
     await userEvent.click(await screen.findByRole("tab", { name: "Notifications" }));
     await userEvent.click(screen.getByRole("switch", { name: "Processing failed" }));
-    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    const save = screen.getByRole("button", { name: "Save changes" });
+    await userEvent.click(save);
     expect(screen.getByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Couldn't save in this browser. Your changes apply to this session only.");
+    expect(screen.queryByText("Saved in this browser")).not.toBeInTheDocument();
+    expect(save).toBeEnabled();
   });
 });
