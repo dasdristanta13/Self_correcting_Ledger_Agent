@@ -161,3 +161,57 @@ def test_static_frontend_is_mounted_when_dist_exists(tmp_path):
     c, _ = make_client(tmp_path, frontend_dist=dist)
     assert "UI" in c.get("/").text
     assert c.get("/api/health").status_code == 200
+
+
+class BoomExecutor:
+    def submit(self, fn, *a, **kw):
+        raise RuntimeError("pool is shut down")
+
+
+class BoomStore(InMemoryJobStore):
+    def create(self, job):
+        raise RuntimeError("db down")
+
+
+UNAVAILABLE = {"code": "unavailable", "message": "The service could not queue this file. Try again."}
+
+
+def test_submit_failure_is_503_cleans_upload_and_leaves_no_queued_job(tmp_path, pdf_bytes):
+    store = InMemoryJobStore()
+    c = TestClient(create_app(store, plain_deps, upload_dir=tmp_path / "up", executor=BoomExecutor()))
+    r = upload(c, pdf_bytes)
+    assert r.status_code == 503 and r.json() == UNAVAILABLE
+    assert list((tmp_path / "up").iterdir()) == []
+    assert all(j.state == "ERROR" for j in store.list())
+
+
+def test_store_create_failure_is_503_and_cleans_upload(tmp_path, pdf_bytes):
+    c = TestClient(create_app(BoomStore(), plain_deps, upload_dir=tmp_path / "up", executor=Inline()))
+    r = upload(c, pdf_bytes)
+    assert r.status_code == 503 and r.json() == UNAVAILABLE
+    assert list((tmp_path / "up").iterdir()) == []
+
+
+def test_oversize_content_length_is_rejected_before_reading_body(tmp_path):
+    c, store = make_client(tmp_path, max_upload_mb=0.0001)
+    r = c.post("/api/invoices", content=b"x", headers={
+        "content-type": "multipart/form-data; boundary=zzz", "content-length": str(5 * 1024 * 1024)})
+    assert r.status_code == 413 and r.json()["code"] == "too_large"
+    assert store.list() == []
+
+
+def test_stale_uploads_are_swept_at_startup(tmp_path):
+    up = tmp_path / "up"
+    up.mkdir()
+    (up / "old.pdf").write_bytes(b"%PDF-stale")
+    (up / "keep.txt").write_text("x")
+    create_app(InMemoryJobStore(), plain_deps, upload_dir=up, executor=Inline())
+    assert sorted(p.name for p in up.iterdir()) == ["keep.txt"]
+
+
+def test_malformed_request_uses_error_shape(tmp_path):
+    c, _ = make_client(tmp_path)
+    r = c.post("/api/invoices", content=b"{}", headers={"content-type": "multipart/form-data"})
+    assert r.status_code == 422 and r.json()["code"] in ("invalid_request", "missing_file")
+    r = c.get("/api/invoices?limit=abc")
+    assert r.status_code == 422 and r.json()["code"] == "invalid_request"
