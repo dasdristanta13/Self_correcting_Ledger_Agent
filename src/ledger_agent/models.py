@@ -141,7 +141,7 @@ class Patch(BaseModel):
     source_page: int | None = None
     source_table: str | None = None
     source_row: int | None = None
-    confidence: float
+    confidence: float = Field(ge=0, le=1, allow_inf_nan=False)
 
 
 class AuditRecord(BaseModel):

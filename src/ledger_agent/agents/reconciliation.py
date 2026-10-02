@@ -35,7 +35,9 @@ def check_patch(ledger: Ledger, patch: Patch, threshold: float) -> None:
         raise PatchRejected(f"old value mismatch for {patch.path}")
     if patch.source_page is None:
         raise PatchRejected(f"no source evidence for {patch.path}")
-    if patch.confidence < threshold:
+    if not patch.new_value.is_finite():
+        raise PatchRejected(f"new value is not finite for {patch.path}")
+    if not (patch.confidence >= threshold):
         raise PatchRejected(f"confidence {patch.confidence:.2f} below threshold for {patch.path}")
 
 

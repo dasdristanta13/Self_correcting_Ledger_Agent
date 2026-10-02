@@ -46,3 +46,19 @@ def test_safety_checks_reject(kw):
 
 def test_check_passes_for_valid_patch():
     check_patch(bad_ledger(), patch(), 0.90)
+
+def test_gate_rejects_nan_confidence_and_nan_threshold():
+    p = Patch.model_construct(**{**patch().model_dump(), "confidence": float("nan")})
+    with pytest.raises(PatchRejected, match="confidence"):
+        check_patch(bad_ledger(), p, 0.90)
+    with pytest.raises(PatchRejected, match="confidence"):
+        check_patch(bad_ledger(), patch(), float("nan"))
+
+def test_gate_rejects_non_finite_new_value():
+    p = Patch.model_construct(**{**patch().model_dump(), "new_value": D("NaN")})
+    with pytest.raises(PatchRejected):
+        check_patch(bad_ledger(), p, 0.90)
+
+def test_patch_model_rejects_nan_confidence():
+    with pytest.raises(Exception):
+        patch(confidence=float("nan"))
