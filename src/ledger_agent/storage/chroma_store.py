@@ -7,10 +7,18 @@ import uuid
 from pathlib import Path
 
 import chromadb
+from chromadb.config import Settings
 
 from ledger_agent.storage.base import Job, utc_now
 
 _ZERO = [0.0]
+
+
+def persistent_client(path):
+    """The one way this project opens a Chroma directory (telemetry off; identical Settings everywhere,
+    because Chroma raises when one path is opened with different settings in a process)."""
+    Path(path).mkdir(parents=True, exist_ok=True)
+    return chromadb.PersistentClient(path=str(path), settings=Settings(anonymized_telemetry=False))
 
 _clock_lock = threading.Lock()
 _last_ts = 0
@@ -34,8 +42,7 @@ class ChromaJobStore:
 
     @classmethod
     def persistent(cls, path) -> "ChromaJobStore":
-        Path(path).mkdir(parents=True, exist_ok=True)
-        return cls(chromadb.PersistentClient(path=str(path)))
+        return cls(persistent_client(path))
 
     def _put(self, job: Job) -> None:
         self._jobs.upsert(ids=[job.job_id], embeddings=[_ZERO], documents=[job.model_dump_json()],

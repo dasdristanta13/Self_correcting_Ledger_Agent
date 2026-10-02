@@ -7,8 +7,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import chromadb
-from chromadb.config import Settings
 from fastapi import FastAPI
 
 from ledger_agent.agents.audit import ChunkValueProposer
@@ -19,7 +17,7 @@ from ledger_agent.fakes import HashingEmbedder
 from ledger_agent.graph import Deps
 from ledger_agent.observability.sinks import CompositeSink, JsonLogSink, StoreTraceSink, configure_json_logging
 from ledger_agent.retrieval.chroma_vector import chroma_vector_factory, sweep_orphan_indexes
-from ledger_agent.storage.chroma_store import ChromaJobStore
+from ledger_agent.storage.chroma_store import ChromaJobStore, persistent_client
 
 
 def build_app(data_dir, *, ledger_builder=build_ledger, executor=None, max_upload_mb: float = 20,
@@ -43,8 +41,7 @@ def _build(data_dir, ledger_builder, executor, max_upload_mb, frontend_dist, gua
     if not gitignore.exists():               # keep runtime data out of git without touching the repo .gitignore
         gitignore.write_text("*\n", encoding="ascii")
     (data_dir / "chroma").mkdir(parents=True, exist_ok=True)
-    client = chromadb.PersistentClient(path=str(data_dir / "chroma"),
-                                       settings=Settings(anonymized_telemetry=False))
+    client = persistent_client(data_dir / "chroma")
     store = ChromaJobStore(client)
     store.mark_interrupted()                 # jobs a crash left QUEUED/RUNNING must not spin forever
     sweep_orphan_indexes(client)             # per-invoice collections a crash left behind

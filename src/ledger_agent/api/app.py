@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import tempfile
@@ -45,10 +46,12 @@ def create_app(store: JobStore, deps_factory: Callable[[str], Deps], *, max_uplo
     @asynccontextmanager
     async def lifespan(_app):
         yield
-        if own_pool:
-            pool.shutdown(wait=False, cancel_futures=True)
-        if on_shutdown is not None:
-            on_shutdown()
+        try:
+            if own_pool:   # in-flight jobs finish (queued ones are cancelled) BEFORE the data-dir lock is released
+                await asyncio.to_thread(pool.shutdown, True, cancel_futures=True)
+        finally:
+            if on_shutdown is not None:
+                on_shutdown()
 
     app = FastAPI(title="Self-Correcting Ledger Agent", lifespan=lifespan)
 

@@ -246,3 +246,28 @@ def test_early_413_carries_cors_headers(tmp_path):
         "content-type": "multipart/form-data; boundary=zzz", "content-length": str(5 * 1024 * 1024)})
     assert r.status_code == 413
     assert r.headers.get("access-control-allow-origin") == "http://localhost:5173"
+
+
+def test_shutdown_waits_for_inflight_jobs_before_releasing(tmp_path, pdf_bytes):
+    import threading
+
+    started, release, events = threading.Event(), threading.Event(), []
+
+    def blocking_deps(job_id):
+        started.set()
+        release.wait(30)
+        return plain_deps(job_id)
+
+    store = InMemoryJobStore()
+    app = create_app(store, blocking_deps, upload_dir=tmp_path / "up", on_shutdown=lambda: events.append("released"))
+    c = TestClient(app)
+    c.__enter__()                                           # starts the lifespan
+    assert upload(c, pdf_bytes).status_code == 202
+    assert started.wait(10)
+    closer = threading.Thread(target=lambda: c.__exit__(None, None, None))
+    closer.start()
+    closer.join(0.5)
+    assert closer.is_alive() and events == []               # job still running -> lock not released
+    release.set()
+    closer.join(30)
+    assert not closer.is_alive() and events == ["released"]

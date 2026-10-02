@@ -66,3 +66,11 @@ def test_two_store_instances_on_one_client_lose_no_events():
     assert len(events) == 30
     for tag in (0, 1):
         assert [e["n"] for e in events if e["tag"] == tag] == list(range(15))
+
+
+def test_persistent_store_and_build_app_can_share_one_path(tmp_path):
+    from ledger_agent.api.main import build_app
+
+    data = tmp_path / "data"
+    ChromaJobStore.persistent(data / "chroma")           # same Settings -> no "different settings" error
+    build_app(data)

@@ -17,11 +17,20 @@ def test_uploads_dir_is_under_data_dir(tmp_path):
 def test_build_app_from_env_reads_environment(tmp_path, monkeypatch):
     from ledger_agent.api.main import build_app_from_env
 
+    import logging
+
+    trace = logging.getLogger("ledger_agent.trace")
+    saved = (trace.handlers[:], trace.level, trace.propagate)
     monkeypatch.setenv("LEDGER_DATA_DIR", str(tmp_path / "envdata"))
     monkeypatch.setenv("MAX_UPLOAD_MB", "1")
-    c = TestClient(build_app_from_env())
-    assert c.get("/api/health").json()["store"] == "chroma"
-    assert (tmp_path / "envdata" / "chroma").is_dir()
+    try:
+        c = TestClient(build_app_from_env())
+        assert c.get("/api/health").json()["store"] == "chroma"
+        assert (tmp_path / "envdata" / "chroma").is_dir()
+    finally:
+        trace.handlers[:] = saved[0]
+        trace.setLevel(saved[1])
+        trace.propagate = saved[2]
 
 
 def test_deps_factory_makes_fresh_deps_with_job_bound_sink(tmp_path, monkeypatch):
