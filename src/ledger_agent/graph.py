@@ -65,7 +65,10 @@ def build_graph(deps: Deps):
     def ingest(state):
         pages = ingest_pdf(state["pdf_path"], min_chars=cfg.ocr_min_chars, ocr=deps.ocr)
         missing = [p.page_number for p in pages if p.needs_ocr]
-        if missing:
+        total_chars = sum(len(p.text.strip()) for p in pages)
+        # A near-empty page in an otherwise native document (blank last page, a short
+        # thank-you page) is ignored; only a document that as a whole lacks text needs OCR.
+        if missing and total_chars < cfg.ocr_min_chars:
             return {"status": Status.FAILED, "route": "failed",
                     "error": f"ingest: pages {missing} need OCR but no OCR backend is configured"}
         return {"pages": pages, "status": Status.INGESTED, "route": "extract"}

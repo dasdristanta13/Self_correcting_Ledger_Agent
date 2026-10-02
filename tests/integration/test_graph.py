@@ -93,3 +93,13 @@ def test_pdf_without_line_item_table_fails_cleanly(tmp_path):          # Review 
     d.save(p); d.close()
     res = run_invoice(str(p), deps())
     assert res.status == Status.FAILED and "line-item" in res.error
+
+def test_short_trailing_page_does_not_fail_native_pdf(tmp_path):
+    pdf = render_invoice(default_spec(), tmp_path / "INV-001.pdf")
+    d = pymupdf.open(str(pdf))
+    d.new_page()                                                   # blank last page
+    p2 = d.new_page(); p2.insert_text((72, 72), "Thank you!")      # short page
+    out = tmp_path / "INV-TRAIL.pdf"
+    d.save(out); d.close()
+    res = run_invoice(str(out), deps())
+    assert res.status == Status.RECONCILED and res.error is None
