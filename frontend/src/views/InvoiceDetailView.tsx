@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Job } from "../api/types";
 import { AgentTimeline } from "../components/AgentTimeline";
 import { Corrections } from "../components/Corrections";
@@ -23,6 +23,7 @@ const back = <a className="back-link" href="#/invoices">‹ Back to invoices</a>
 export function InvoiceDetailView({ id, tab }: { id: string; tab: DetailTab }) {
   const { job, error } = useJob(id);
   const [replay, setReplay] = useState(0);
+  useEffect(() => { setReplay(0); }, [tab]);   // a replay belongs to one visit of the tab
 
   if (error && !job) {
     return error === JOB_NOT_FOUND ? (
@@ -106,7 +107,7 @@ function ExtractedTab({ job }: { job: Job }) {
         <h2 id="hdr-h">Header and totals</h2>
         <dl className="kv">
           <dt>Invoice</dt><dd>{l.invoice_id}</dd><dt>Currency</dt><dd>{l.currency}</dd>
-          {totals.filter(([, v]) => v != null).map(([k, v]) => (<span key={k} className="kv-row"><dt>{k}</dt><dd>{formatMoney(v)}</dd></span>))}
+          {totals.filter(([, v]) => v != null).map(([k, v]) => (<div key={k} className="kv-row"><dt>{k}</dt><dd>{formatMoney(v)}</dd></div>))}
         </dl>
       </aside>
     </div>

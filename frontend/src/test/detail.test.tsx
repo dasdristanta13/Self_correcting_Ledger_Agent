@@ -81,6 +81,16 @@ describe("InvoiceDetailView", () => {
     await waitFor(() => expect(within(screen.getByRole("list", { name: "Agent activity" })).queryAllByRole("listitem").length).toBeLessThan(4));
     await waitFor(() => expect(within(screen.getByRole("list", { name: "Agent activity" })).getAllByRole("listitem")).toHaveLength(4), { timeout: 4000 });
   });
+  it("does not re-run the replay when returning to the reconciliation tab", async () => {
+    renderAt(`${url}/reconciliation`);
+    const first = await screen.findByRole("list", { name: "Agent activity" });
+    expect(within(first).getAllByRole("listitem")).toHaveLength(4);
+    await userEvent.click(screen.getByRole("button", { name: "Replay agent" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Document" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Reconciliation" }));
+    const again = await screen.findByRole("list", { name: "Agent activity" });
+    expect(within(again).getAllByRole("listitem")).toHaveLength(4);
+  });
 });
 
 describe("AgentTimeline", () => {
