@@ -5,8 +5,8 @@ Document-scoped, evidence-grounded invoice reconciliation. An LLM (or any propos
 ## Quick start
 
 ```bash
-pip install -e ".[dev]"
-pytest            # 81 tests
+pip install -e ".[dev]"   # dev extra includes pytest and reportlab (used to render test invoices)
+pytest            # 92 tests
 ```
 
 ```python
@@ -27,9 +27,10 @@ for c in res.corrections:
     print(f"{c.field}: {c.old_value} -> {c.new_value} (page {c.source_page}, row {c.source_row}, conf {c.confidence:.2f})")
 ```
 
-Output:
+Output (the first line is a PyMuPDF layout notice printed to stderr on import/first use; it is harmless):
 
 ```text
+Consider using the pymupdf_layout package for a greatly improved page layout analysis.
 RECONCILED after 1 revision(s)
 items[line_01].amount: 1040.00 -> 1014.00 (page 1, row 1, conf 0.97)
 ```
@@ -52,7 +53,7 @@ Guards (max revisions, no-progress signature, evidence confidence) bound the loo
 
 ## Terminal statuses
 
-`RECONCILED`, `UNRESOLVED` (invoice itself is inconsistent), `MAX_REVISIONS_EXCEEDED`, `INSUFFICIENT_EVIDENCE`, `NO_PROGRESS`, and `FAILED` (e.g. scanned PDF with no OCR backend, or no line-item table).
+`RECONCILED`, `UNRESOLVED` (the evidence agrees with the extracted values, or a patch was rejected: needs human review), `MAX_REVISIONS_EXCEEDED`, `INSUFFICIENT_EVIDENCE`, `NO_PROGRESS`, and `FAILED` (e.g. scanned PDF with no OCR backend, or no line-item table).
 
 ## Cycle 2 (not yet implemented)
 
