@@ -9,6 +9,7 @@ import { AuditView } from "./views/AuditView";
 import { NotFoundView } from "./views/NotFoundView";
 import { UploadView } from "./views/UploadView";
 import { ReviewView } from "./views/ReviewView";
+import { SettingsView } from "./views/SettingsView";
 
 function viewFor(route: Route): ReactNode {
   switch (route.name) {
@@ -17,6 +18,7 @@ function viewFor(route: Route): ReactNode {
     case "upload": return <UploadView />;
     case "review": return <ReviewView />;
     case "audit": return <AuditView />;
+    case "settings": return <SettingsView />;
     case "detail": return <InvoiceDetailView key={route.id} id={route.id} tab={route.tab} />;
     default: return <NotFoundView />;     // later tasks register their views here
   }

@@ -95,3 +95,10 @@ select { padding: var(--s2) var(--s3); border: 1px solid var(--line-strong); bor
   .detail-grid, .detail-grid-rec { grid-template-columns: 1fr; }
   .paper { padding: var(--s4); }
 }
+
+.banner { margin-bottom: var(--s4); padding: var(--s3) var(--s4); border-radius: var(--radius-sm); background: var(--accent-wash); color: var(--ink); font-size: var(--text-sm); }
+.settings-panel { max-width: 44rem; padding-block: var(--s2); }
+.set { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s4) 0; }
+.set + .set { border-top: 1px solid var(--line); }
+.set-label { display: block; font-weight: 500; }
+.set-hint { display: block; max-width: 36rem; font-size: var(--text-sm); }
