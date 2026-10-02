@@ -2,11 +2,15 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { Sidebar } from "./components/shell/Sidebar";
 import { JobsProvider } from "./hooks/useJobs";
 import { useRoute, type Route } from "./router";
+import { DashboardView } from "./views/DashboardView";
+import { InvoicesView } from "./views/InvoicesView";
 import { NotFoundView } from "./views/NotFoundView";
 import { UploadView } from "./views/UploadView";
 
 function viewFor(route: Route): ReactNode {
   switch (route.name) {
+    case "dashboard": return <DashboardView />;
+    case "invoices": return <InvoicesView />;
     case "upload": return <UploadView />;
     default: return <NotFoundView />;     // later tasks register their views here
   }

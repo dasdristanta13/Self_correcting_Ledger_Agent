@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  agentLoad, correctionCount, countByKey, dailyBuckets, needsReview, priorityOf, reconciliationRate, statusKey, stopReason,
+  agentLoad, correctionCount, countByKey, dailyBuckets, filterJobs, needsReview, priorityOf, reconciliationRate, statusKey, stopReason,
 } from "../lib/derive";
 import { eventDetail, formatDate, formatDateTime, formatTime, nodeLabel } from "../lib/format";
 import { done, jobWith } from "./fixtures";
@@ -98,5 +98,16 @@ describe("format additions", () => {
     expect(eventDetail(e({ corrections: ["x"] }))).toBe("1 correction proposed");
     expect(eventDetail(e({ error: "boom" }))).toBe("boom");
     expect(eventDetail(e({}))).toBe("");
+  });
+});
+
+describe("filterJobs", () => {
+  const jobs = [jobWith("alpha", "RECONCILED"), jobWith("beta", "UNRESOLVED"), jobWith("gamma", null)];
+  it("filters by status key and by text", () => {
+    expect(filterJobs(jobs, "all", "").length).toBe(3);
+    expect(filterJobs(jobs, "wn", "").map((j) => j.job_id)).toEqual(["beta"]);
+    expect(filterJobs(jobs, "all", "ALP").map((j) => j.job_id)).toEqual(["alpha"]);
+    expect(filterJobs(jobs, "all", "unresolved").map((j) => j.job_id)).toEqual(["beta"]);
+    expect(filterJobs(jobs, "ok", "beta")).toEqual([]);
   });
 });

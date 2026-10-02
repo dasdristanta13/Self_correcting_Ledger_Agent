@@ -64,3 +64,13 @@ export function needsReview(jobs: Job[]): Job[] {
 export const stopReason = (job: Job): string => (job.state === "ERROR" || !job.result ? "ERROR" : job.result.status);
 export const correctionCount = (job: Job): number => job.result?.corrections.length ?? 0;
 export const agentLoad = (jobs: Job[]): number => countByKey(jobs).in;
+
+export function filterJobs(jobs: Job[], key: StatusKey | "all", q: string): Job[] {
+  const needle = q.trim().toLowerCase();
+  return jobs.filter((j) => {
+    if (key !== "all" && statusKey(j) !== key) return false;
+    if (!needle) return true;
+    const hay = `${j.filename} ${j.result?.invoice_id ?? ""} ${stopReason(j)}`.toLowerCase();
+    return hay.includes(needle);
+  });
+}
