@@ -8,8 +8,15 @@ $api = $null
 $ui = $null
 
 function Stop-Tree($proc) {
-    if ($null -ne $proc) {
-        & taskkill /PID $proc.Id /T /F 2>$null | Out-Null
+    # Never throws: a child that already exited (or a taskkill "not found") must not skip the other cleanup.
+    if ($null -eq $proc) { return }
+    try {
+        if (-not $proc.HasExited) {
+            $ErrorActionPreference = "Continue"
+            & taskkill /PID $proc.Id /T /F 2>&1 | Out-Null
+        }
+    } catch {
+        Write-Warning "could not stop process $($proc.Id): $_"
     }
 }
 
@@ -27,7 +34,13 @@ try {
     Write-Host "API pid $($api.Id) on :8787, Vite pid $($ui.Id) on :5173. Press Ctrl+C to stop both."
     while (-not $api.HasExited -and -not $ui.HasExited) { Start-Sleep -Milliseconds 500 }
 } finally {
-    Stop-Tree $api
-    Stop-Tree $ui
-    Set-Location $origin
+    try {
+        Stop-Tree $api
+    } finally {
+        try {
+            Stop-Tree $ui
+        } finally {
+            Set-Location $origin
+        }
+    }
 }
