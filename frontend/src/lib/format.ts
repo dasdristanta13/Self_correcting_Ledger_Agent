@@ -20,3 +20,14 @@ export function fieldLabel(path: string): string {
   const [, , id, attr] = m;
   return `${id.replace("_", " ")} · ${attr.replace("_", " ")}`;
 }
+
+/** "0.10" -> "10%", "0.075" -> "7.5%". Pure string math: a rate is never routed through Number(). */
+export function formatRate(rate: string | null | undefined): string {
+  if (rate == null) return "";
+  const m = /^(\d+)(?:\.(\d+))?$/.exec(rate.trim());
+  if (!m) return rate;
+  const frac = (m[2] ?? "").padEnd(2, "0");
+  const whole = (m[1] + frac.slice(0, 2)).replace(/^0+(?=\d)/, "");
+  const rest = frac.slice(2).replace(/0+$/, "");
+  return `${whole}${rest ? `.${rest}` : ""}%`;
+}

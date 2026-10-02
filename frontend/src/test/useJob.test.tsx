@@ -10,7 +10,7 @@ import { getJob } from "../api/client";
 const done = example as unknown as Job;
 const running: Job = { ...done, state: "RUNNING", result: null, finished_at: null };
 
-beforeEach(() => vi.mocked(getJob).mockReset());
+beforeEach(() => { vi.mocked(getJob).mockReset(); });
 
 it("polls until the job is DONE then stops", async () => {
   vi.mocked(getJob).mockResolvedValueOnce(running).mockResolvedValueOnce(running).mockResolvedValue(done);
@@ -40,4 +40,13 @@ it("does nothing without a job id", () => {
   const { result } = renderHook(() => useJob(null, 10));
   expect(result.current.job).toBeNull();
   expect(getJob).not.toHaveBeenCalled();
+});
+
+it("stops retrying on a 404 and surfaces an error", async () => {
+  vi.mocked(getJob).mockImplementation(() => Promise.reject(Object.assign(new Error("No such job."), { status: 404 })));
+  const { result } = renderHook(() => useJob("gone", 10));
+  await waitFor(() => expect(result.current.error).toBe("That job no longer exists."));
+  const calls = vi.mocked(getJob).mock.calls.length;
+  await new Promise((r) => setTimeout(r, 80));
+  expect(vi.mocked(getJob).mock.calls.length).toBe(calls);
 });

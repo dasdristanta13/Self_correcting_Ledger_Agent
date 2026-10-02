@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fieldLabel, formatMoney, provenanceLabel } from "../lib/format";
+import { fieldLabel, formatMoney, formatRate, provenanceLabel } from "../lib/format";
 import { validateFile } from "../lib/validate";
 
 describe("formatMoney", () => {
@@ -36,5 +36,14 @@ describe("validateFile", () => {
     expect(validateFile(f("a.txt", "text/plain"))).toMatch(/not a PDF/);
     expect(validateFile(f("a.pdf", "application/pdf", 0))).toMatch(/empty/);
     expect(validateFile(f("a.pdf", "application/pdf", 3 * 1024 * 1024), 2)).toMatch(/larger than 2 MB/);
+  });
+});
+
+describe("formatRate", () => {
+  it.each([["0.10", "10%"], ["0.075", "7.5%"], ["0.05", "5%"], ["0.0825", "8.25%"], ["1", "100%"], ["0", "0%"]])(
+    "%s -> %s", (rate, shown) => expect(formatRate(rate)).toBe(shown));
+  it("passes through junk and handles null", () => {
+    expect(formatRate("ten percent")).toBe("ten percent");
+    expect(formatRate(null)).toBe("");
   });
 });

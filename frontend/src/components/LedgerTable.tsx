@@ -1,5 +1,5 @@
 import type { Correction, Ledger } from "../api/types";
-import { formatMoney } from "../lib/format";
+import { formatMoney, formatRate } from "../lib/format";
 
 interface Props { ledger: Ledger; corrections: Correction[] }
 
@@ -10,11 +10,11 @@ export function LedgerTable({ ledger, corrections }: Props) {
     const shown = money ? formatMoney(value) : value;
     if (!c) return shown;
     const old = money ? formatMoney(c.old_value) : c.old_value;
-    return (<><del aria-label={`was ${old}`}>{old}</del> <ins>{shown}</ins></>);
+    return (<><del><span className="visually-hidden">was </span>{old}</del> <ins>{shown}</ins></>);
   };
   const totals: [string, string | null][] = [
     ["Subtotal", ledger.subtotal], ["Discount", ledger.discount],
-    ...ledger.tax_lines.map((t): [string, string | null] => [`Tax${t.rate ? ` ${t.rate}` : ""}`, t.amount]),
+    ...ledger.tax_lines.map((t): [string, string | null] => [`Tax${t.rate ? ` ${formatRate(t.rate)}` : ""}`, t.amount]),
     ["Shipping", ledger.shipping], ["Fees", ledger.fees], ["Total", ledger.total],
   ];
   return (

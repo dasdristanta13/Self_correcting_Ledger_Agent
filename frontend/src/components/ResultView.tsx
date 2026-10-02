@@ -9,9 +9,14 @@ import { Trace } from "./Trace";
 export function ResultView({ job }: { job: Job }) {
   if (job.state === "ERROR") {
     return (
-      <p role="alert" className="field-error service-error">
-        Processing stopped because of a problem on our side, not with the invoice: {job.error ?? "unknown error"}. Upload it again to retry.
-      </p>
+      <>
+        <p role="alert" className="field-error service-error">
+          Processing stopped because of a problem on our side, not with the invoice: {job.error ?? "unknown error"}. Upload it again to retry.
+        </p>
+        <div className="disclosures">
+          <Disclosure title="Trace"><Trace jobId={job.job_id} /></Disclosure>
+        </div>
+      </>
     );
   }
   const r = job.result;

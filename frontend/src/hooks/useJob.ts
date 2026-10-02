@@ -21,6 +21,11 @@ export function useJob(jobId: string | null, intervalMs = 1000) {
         if (j.state === "QUEUED" || j.state === "RUNNING") timer = setTimeout(tick, intervalMs);
       } catch (e) {
         if (cancelled) return;
+        const status = (e as { status?: number } | null)?.status;
+        if (status === 404) {                              // unknown job: retrying cannot help
+          setError("That job no longer exists.");
+          return;
+        }
         setError(e instanceof Error ? e.message : "Network error");
         timer = setTimeout(tick, intervalMs * 3);          // keep trying
       }

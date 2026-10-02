@@ -79,6 +79,14 @@ describe("ResultView", () => {
   it("explains a service ERROR distinctly from a FAILED invoice", () => {
     render(<ResultView job={{ ...done, state: "ERROR", result: null, error: "interrupted by restart" }} />);
     expect(screen.getByRole("alert")).toHaveTextContent(/interrupted by restart/);
+    expect(screen.getByText("Trace")).toBeInTheDocument();           // the trace is most useful after an ERROR
+  });
+  it("labels the tax line with an exact percentage and hides 'was' text from sighted users only via CSS", () => {
+    render(<ResultView job={done} />);
+    expect(screen.getByText("Tax 10%")).toBeInTheDocument();
+    const del = document.querySelector("del")!;
+    expect(del.getAttribute("aria-label")).toBeNull();
+    expect(del.querySelector(".visually-hidden")).toHaveTextContent("was");
   });
   it("loads the trace only when the disclosure is opened", async () => {
     vi.mocked(getTrace).mockResolvedValue([{ run_id: "r", invoice_id: "INV-001", node: "ingest", revision: 0,
@@ -110,6 +118,22 @@ describe("App", () => {
     render(<App />);
     await userEvent.upload(screen.getByLabelText(/drop an invoice pdf/i), pdf());
     expect(await screen.findByRole("alert")).toHaveTextContent("File exceeds the 20 MB limit.");
+  });
+  it("re-enables the drop zone after an upload timeout", async () => {
+    vi.mocked(uploadInvoice).mockRejectedValue(new ApiError("timeout", "The upload took too long and was stopped.", 0));
+    render(<App />);
+    const input = screen.getByLabelText(/drop an invoice pdf/i);
+    await userEvent.upload(input, pdf());
+    expect(await screen.findByRole("alert")).toHaveTextContent(/too long/i);
+    expect(screen.getByLabelText(/drop an invoice pdf/i)).not.toBeDisabled();
+  });
+  it("shows a Reconnecting hint when polling fails mid-job", async () => {
+    const running = { ...done, state: "RUNNING", result: null } as Job;
+    vi.mocked(getJob).mockResolvedValueOnce(running).mockRejectedValue(new Error("offline"));
+    vi.mocked(uploadInvoice).mockResolvedValue({ job_id: done.job_id, status: "QUEUED" });
+    render(<App />);
+    await userEvent.upload(screen.getByLabelText(/drop an invoice pdf/i), pdf());
+    expect(await screen.findByText("Reconnecting…", {}, { timeout: 4000 })).toBeInTheDocument();
   });
   it("lists recent jobs and opens one on click", async () => {
     vi.mocked(listJobs).mockResolvedValue([done]);

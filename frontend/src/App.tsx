@@ -54,7 +54,8 @@ export default function App() {
           </div>
         )}
         {uploadError && <p role="alert" className="field-error">{uploadError}</p>}
-        {pollError && !job && <p role="alert" className="field-error">Lost contact with the server. Retrying.</p>}
+        {pollError && !job && <p role="alert" className="field-error">{pollError}</p>}
+        {pollError && job && working && <p role="status" className="muted">Reconnecting…</p>}
       </div>
       {job && <ResultView job={job} />}
       <RecentJobs jobs={recent} selected={jobId} onSelect={setJobId} />
