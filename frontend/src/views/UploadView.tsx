@@ -43,7 +43,8 @@ export function UploadView() {
       <PageHeader title="Upload invoice" sub="Drop a PDF to extract, validate and reconcile it automatically." />
       <Tabs label="Upload mode" value={mode} onChange={(id) => setMode(id as "single" | "bulk")} idBase="up"
         tabs={[{ id: "single", label: "Single invoice" }, { id: "bulk", label: "Bulk upload" }]} />
-      {mode === "bulk" ? <BulkUpload /> : (<>
+      <div hidden={mode !== "bulk"}><BulkUpload /></div>
+      {mode === "single" && (<>
         <DropZone onFile={handleFile} disabled={busy} />
         <div className="activity">
           {uploadPct !== null && (

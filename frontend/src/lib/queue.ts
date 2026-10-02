@@ -13,8 +13,9 @@ export async function runPool<T>(items: T[], limit: number, worker: (item: T, in
   await Promise.all(Array.from({ length: Math.min(Math.max(1, limit), items.length) }, lane));
 }
 
-export async function pollJob(id: string, intervalMs = 1000, maxFailures = 3): Promise<Job> {
+export async function pollJob(id: string, intervalMs = 1000, maxFailures = 3, maxWaitMs = 600_000): Promise<Job> {
   let failures = 0;
+  const started = Date.now();
   for (;;) {
     try {
       const j = await getJob(id);
@@ -24,6 +25,7 @@ export async function pollJob(id: string, intervalMs = 1000, maxFailures = 3): P
       failures++;
       if ((e as { status?: number } | null)?.status === 404 || failures >= maxFailures) throw e;
     }
+    if (Date.now() - started > maxWaitMs) throw new Error("Timed out waiting for the job to finish.");
     await new Promise((r) => setTimeout(r, intervalMs));
   }
 }

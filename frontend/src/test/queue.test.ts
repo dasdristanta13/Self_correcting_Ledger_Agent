@@ -37,4 +37,8 @@ describe("pollJob", () => {
     await expect(pollJob("j", 0, 3)).rejects.toThrow("gone");
     expect(getJob).toHaveBeenCalledTimes(1);
   });
+  it("times out when the job never finishes", async () => {
+    vi.mocked(getJob).mockReset().mockResolvedValue({ ...done, state: "RUNNING" });
+    await expect(pollJob("j", 0, 3, 30)).rejects.toThrow(/Timed out/);
+  });
 });

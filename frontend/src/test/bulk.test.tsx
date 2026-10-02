@@ -66,4 +66,19 @@ describe("BulkUpload", () => {
     await userEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(screen.queryByRole("table")).toBeNull();
   });
+
+  it("keeps the queue and its running uploads when switching tabs", async () => {
+    let finish: () => void = () => undefined;
+    vi.mocked(uploadInvoice).mockImplementation(() => new Promise((res) => { finish = () => res({ job_id: done.job_id, status: "QUEUED" }); }));
+    await openBulk();
+    await userEvent.upload(screen.getByLabelText(/drop invoice pdfs/i), pdf("a.pdf"));
+    await userEvent.click(screen.getByRole("button", { name: "Reconcile all" }));
+    await waitFor(() => expect(uploadInvoice).toHaveBeenCalledTimes(1));
+    await userEvent.click(screen.getByRole("tab", { name: "Single invoice" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Bulk upload" }));
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByText("a.pdf")).toBeInTheDocument();
+    await act(async () => { finish(); });
+    await waitFor(() => expect(within(screen.getByRole("table")).getByRole("link", { name: "Reconciled" })).toBeInTheDocument());
+  });
 });
