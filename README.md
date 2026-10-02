@@ -28,11 +28,13 @@ ChromaDB (PersistentClient in LEDGER_DATA_DIR/chroma)
 python -m venv .venv
 .venv\Scripts\pip install -e ".[dev]"
 cd frontend; npm ci; cd ..
-scripts\serve.ps1          # builds frontend/dist if missing, serves UI + API
+powershell -ExecutionPolicy Bypass -File scripts\serve.ps1   # builds frontend/dist if missing, serves UI + API
 # open http://localhost:8787
 ```
 
-`scripts\dev.ps1` runs uvicorn with `--reload` (background job) plus the Vite dev server on http://localhost:5173, which proxies `/api` to `http://localhost:8787` (override with `VITE_API_PROXY`). Port 8787 is used instead of 8000 because 8000 is commonly taken.
+The scripts are unsigned, so under the default Windows PowerShell 5.1 execution policy they must be started with `-ExecutionPolicy Bypass -File ...` as above (or run `Set-ExecutionPolicy -Scope Process Bypass` first). `serve.ps1` stops with a clear message if `npm ci` or `npm run build` fails, and always restores your shell's working directory.
+
+`powershell -ExecutionPolicy Bypass -File scripts\dev.ps1` runs uvicorn with `--reload` plus the Vite dev server on http://localhost:5173 (both as child processes; Ctrl+C or closing either one stops both process trees), which proxies `/api` to `http://localhost:8787` (override with `VITE_API_PROXY`). Port 8787 is used instead of 8000 because 8000 is commonly taken.
 
 No API keys and no network are needed: the default embedder and proposer are offline.
 
@@ -42,21 +44,22 @@ No API keys and no network are needed: the default embedder and proposer are off
 |---|---|---|
 | `GET /api/health` | `200 {"status":"ok","store":"chroma"}` | |
 | `POST /api/invoices` (multipart field `file`) | `202 {"job_id","status":"QUEUED"}` | `422 missing_file` / `invalid_request` (malformed body), `415 not_a_pdf` (no `%PDF` magic; extension is ignored), `413 too_large` (over `MAX_UPLOAD_MB`), `503 unavailable` (could not queue) |
-| `GET /api/invoices?limit=50` | `200` list of jobs, newest first (limit clamped to 1..200) | |
+| `GET /api/invoices?limit=50` | `200` list of jobs, newest first (limit clamped to 1..200) | `422 invalid_request` (non-integer `limit`) |
 | `GET /api/invoices/{job_id}` | `200` job: `state` (`QUEUED/RUNNING/DONE/ERROR`), `result` (core status, ledger, corrections, evidence), `error` | `404 not_found` |
 | `GET /api/invoices/{job_id}/trace` | `200` ordered trace events | `404 not_found` |
 
-Every error body is `{"code": str, "message": str}`. Money is always a JSON string. `ERROR` means a service failure (including "interrupted by restart"); `result.status = FAILED` means the invoice itself could not be processed.
+Every error body is `{"code": str, "message": str}` (any other HTTP error, such as `405` for a wrong method, is `http_error`). Money is always a JSON string. `ERROR` means a service failure (including "interrupted by restart"); `result.status = FAILED` means the invoice itself could not be processed.
 
 ## Data and configuration
 
-All state lives under `LEDGER_DATA_DIR` (default `./data`): `chroma/` (jobs, events, vectors) and `uploads/` (transient PDFs, removed after each job and swept at startup). `scripts\serve.ps1` writes `data\.gitignore` containing `*` when it creates the folder.
+All state lives under `LEDGER_DATA_DIR` (default `./data`): `chroma/` (jobs, events, vectors) and `uploads/` (transient PDFs, removed after each job and swept at startup). The server writes `data\.gitignore` containing `*` when it creates the folder (and the eval CLI does the same for its output folder), so runtime data is never committed by accident. `data\.ledger.lock` holds the single-instance lock described under Known limits.
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `LEDGER_DATA_DIR` | `./data` | Data directory |
 | `MAX_UPLOAD_MB` | `20` | Upload size limit |
-| `LEDGER_FRONTEND_DIST` | `frontend/dist` | Built UI served at `/` |
+| `LEDGER_FRONTEND_DIST` | `frontend/dist` | Built UI served at `/` (a warning is logged at startup if the folder is missing) |
+| `LEDGER_LOG_LEVEL` | `INFO` | Level of the JSON trace log (`ledger_agent.trace` logger, one JSON line per graph node on stderr) |
 | `LANGSMITH_TRACING` / `LANGSMITH_API_KEY` | unset | Optional: set `LANGSMITH_TRACING=true` plus a key to also send LangGraph traces to LangSmith |
 | `VITE_API_PROXY` | `http://localhost:8787` | Vite dev-server proxy target |
 
@@ -65,8 +68,8 @@ Jobs left `QUEUED`/`RUNNING` by a crash become `ERROR` ("interrupted by restart"
 ## Tests
 
 ```powershell
-.venv\Scripts\python -m pytest        # 181 tests
-cd frontend; npm test                  # 28 tests (vitest)
+.venv\Scripts\python -m pytest        # Python suite
+cd frontend; npm test                  # vitest suite
 ```
 
 ## Evaluation
@@ -92,6 +95,8 @@ Retrieval of the source row (line-item cases):
 | bm25 | 6 | 100% | 100% | 1.000 |
 | hybrid | 6 | 100% | 100% | 1.000 |
 
+Notes: `no_rag` latency excludes PDF ingestion and indexing (it works on the already-built ledger), so its latency is not comparable with the other rows. The `vector` variant uses the offline `HashingEmbedder` (lexical hashing, not semantic) with the in-memory numpy index, not the Chroma backend, so "vector 100%" is not a claim about semantic RAG.
+
 `no_rag` is an arithmetic-trust baseline (no LLM, no retrieval): a stand-in for 'an LLM without retrieval'. Swap a real LLM client in later.
 
 ## Known limits
@@ -101,7 +106,10 @@ Retrieval of the source row (line-item cases):
 - The eval's `no_rag` variant is an arithmetic-trust stand-in for an LLM without retrieval, not a real LLM.
 - `hybrid` and `bm25` abstain on the `shipping` eval case: `ChunkValueProposer` maps retrieval rank >= 3 to confidence 0.80, below the 0.90 threshold. That is a safe abstention and a cycle-3 candidate.
 - Real scanned-PDF OCR and Docling are interfaces only; scanned pages without an OCR backend end in `FAILED`.
-- Deferred frontend polish: XHR abort/timeout handling, a non-JSON 413 fallback, and no "Reconnecting..." hint when polling fails mid-job.
+- One server process per data directory: `build_app` takes an exclusive lock on `LEDGER_DATA_DIR/.ledger.lock` before any startup sweep, and a second process on the same directory fails fast with "another ledger-agent process is using ..." instead of destroying the first one's in-flight work.
+- A chunked upload without a `Content-Length` header bypasses the early 413 (Starlette spools it to disk before the bounded read); the early reject only covers declared sizes.
+- The 20 MB client-side limit in the UI is a constant and is not read from the server's `MAX_UPLOAD_MB`.
+- `ChromaJobStore.list` is unbounded and there is no job pruning; the upload handler does synchronous file I/O on the event loop. Both are accepted for now.
 
 ## Using the core loop from Python
 

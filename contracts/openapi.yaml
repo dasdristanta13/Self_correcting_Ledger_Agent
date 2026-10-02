@@ -2,7 +2,11 @@ openapi: 3.0.3
 info: {title: Self-Correcting Ledger Agent, version: 1.0.0}
 paths:
   /api/health:
-    get: {summary: Health, responses: {"200": {description: ok, content: {application/json: {schema: {$ref: "#/components/schemas/Health"}}}}}}
+    get:
+      summary: Health
+      responses:
+        "200": {description: ok, content: {application/json: {schema: {$ref: "#/components/schemas/Health"}}}}
+        default: {description: "any HTTP error, e.g. 405 http_error for a wrong method", content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
   /api/invoices:
     post:
       summary: Upload an invoice PDF
@@ -22,6 +26,7 @@ paths:
       responses:
         "200": {description: ok, content: {application/json: {schema: {type: array, items: {$ref: "#/components/schemas/Job"}}}}}
         "422": {description: "bad query parameter, e.g. non-integer limit (code invalid_request)", content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+        default: {description: "any other HTTP error, e.g. 405 http_error", content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
   /api/invoices/{job_id}:
     get:
       summary: One job
