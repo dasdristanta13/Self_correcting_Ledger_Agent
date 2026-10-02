@@ -113,7 +113,7 @@ def test_dispose_failure_does_not_hide_result(tmp_path, monkeypatch):
         def __getattr__(self, name): return getattr(self._i, name)
         def dispose(self): raise RuntimeError("dispose exploded")
 
-    monkeypatch.setattr(g, "build_index", lambda doc, emb: Boom(real(doc, emb)))
+    monkeypatch.setattr(g, "build_index", lambda doc, emb, *a: Boom(real(doc, emb, *a)))
     pdf = render_invoice(default_spec(), tmp_path / "INV-001.pdf")
     res = run_invoice(str(pdf), deps())
     assert res.status == Status.RECONCILED

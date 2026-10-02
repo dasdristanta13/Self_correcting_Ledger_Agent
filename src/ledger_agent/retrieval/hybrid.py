@@ -21,17 +21,21 @@ def _ranks(scores: list[float]) -> dict[int, int]:
 
 
 class InvoiceIndex:
-    def __init__(self, invoice_id: str, chunks: list[Chunk], embedder: Embedder):
+    def __init__(self, invoice_id: str, chunks: list[Chunk], embedder: Embedder,
+                 vector_factory=None, default_mode: str = "hybrid"):
         stray = [c.chunk_id for c in chunks if c.invoice_id != invoice_id]
         if stray:
             raise InvoiceScopeError(f"chunks from another invoice: {stray}")
         self.invoice_id = invoice_id
+        self.default_mode = default_mode
         self._chunks: list[Chunk] | None = chunks
         self._bm25: BM25Index | None = BM25Index(chunks)
-        self._vec: VectorIndex | None = VectorIndex(chunks, embedder)
+        factory = vector_factory or (lambda inv, ch, emb: VectorIndex(ch, emb))
+        self._vec = factory(invoice_id, chunks, embedder)
 
-    def search(self, invoice_id: str, query: str, k: int = 5, mode: str = "hybrid",
+    def search(self, invoice_id: str, query: str, k: int = 5, mode: str | None = None,
                chunk_types: list[str] | None = None) -> list[ScoredChunk]:
+        mode = mode or self.default_mode
         if self._chunks is None:
             raise IndexDisposedError("index was disposed")
         if invoice_id != self.invoice_id:
@@ -49,8 +53,15 @@ class InvoiceIndex:
         return [ScoredChunk(chunk=self._chunks[i], score=fused[i]) for i in keep[:k]]
 
     def dispose(self) -> None:
-        self._chunks = self._bm25 = self._vec = None
+        vec, self._chunks, self._bm25, self._vec = self._vec, None, None, None
+        if vec is not None:
+            try:
+                vec.dispose()
+            except Exception:  # backend cleanup failure must not hide the run's result
+                pass
 
 
-def build_index(doc: Document, embedder: Embedder) -> InvoiceIndex:
-    return InvoiceIndex(doc.document_id, build_chunks(doc), embedder)
+def build_index(doc: Document, embedder: Embedder, vector_factory=None,
+                mode: str = "hybrid") -> InvoiceIndex:
+    return InvoiceIndex(doc.document_id, build_chunks(doc), embedder,
+                        vector_factory=vector_factory, default_mode=mode)

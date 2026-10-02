@@ -1,3 +1,5 @@
+from typing import Callable, Protocol
+
 import numpy as np
 
 from ledger_agent.models import Chunk
@@ -11,6 +13,9 @@ class VectorIndex:
         norms = np.linalg.norm(m, axis=1, keepdims=True) if len(m) else m
         self._m = m / np.where(norms == 0, 1, norms) if len(m) else m
 
+    def dispose(self) -> None:
+        return None
+
     def scores(self, query: str) -> list[float]:
         if len(self._m) == 0:
             return []
@@ -18,3 +23,11 @@ class VectorIndex:
         n = np.linalg.norm(q)
         q = q / n if n else q
         return [float(s) for s in self._m @ q]
+
+
+class VectorIndexLike(Protocol):
+    def scores(self, query: str) -> list[float]: ...
+    def dispose(self) -> None: ...
+
+
+VectorFactory = Callable[[str, "list[Chunk]", Embedder], VectorIndexLike]

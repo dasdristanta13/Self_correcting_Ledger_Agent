@@ -18,6 +18,7 @@ class Status(str, Enum):
 
 
 class LedgerState(TypedDict, total=False):
+    run_id: str
     pdf_path: str
     invoice_id: str
     pages: list

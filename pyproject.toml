@@ -9,10 +9,11 @@ requires-python = ">=3.11"
 dependencies = [
   "pydantic>=2.6", "pymupdf>=1.24", "langgraph>=0.2", "rank-bm25>=0.2.2",
   "numpy>=1.26", "pyyaml>=6",
+  "chromadb>=0.5", "fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "reportlab>=4"]
+dev = ["pytest>=8", "reportlab>=4", "httpx>=0.27"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

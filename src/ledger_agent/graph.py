@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
@@ -21,6 +22,7 @@ from ledger_agent.models import AuditRecord, Document, Evidence, Ledger
 from ledger_agent.protocols import Embedder, LLMClient, OcrBackend, TableExtractor
 from ledger_agent.retrieval.hybrid import build_index
 from ledger_agent.state import LedgerState, Status
+from ledger_agent.tracing import NullTraceSink, TraceSink, traced
 from ledger_agent.validation.arithmetic import validate
 
 
@@ -34,6 +36,9 @@ class Deps:
     table_extractor: TableExtractor = field(default_factory=PyMuPDFTableExtractor)
     ledger_builder: Callable[[Document], Ledger] = build_ledger
     validator: Callable = validate
+    vector_factory: Callable | None = None
+    trace_sink: TraceSink = field(default_factory=NullTraceSink)
+    retrieval_mode: str = "hybrid"
 
 
 class ReconciliationResult(BaseModel):
@@ -84,7 +89,8 @@ def build_graph(deps: Deps):
 
     @_guarded("build_index")
     def build_index_node(state):
-        return {"retrieval_index": build_index(state["document"], deps.embedder),
+        return {"retrieval_index": build_index(state["document"], deps.embedder, deps.vector_factory,
+                                           deps.retrieval_mode),
                 "status": Status.INDEXED, "route": "build_ledger"}
 
     @_guarded("build_ledger")
@@ -169,7 +175,7 @@ def build_graph(deps: Deps):
                      ("build_ledger", build_ledger_node), ("validate", validate_node),
                      ("audit", audit), ("verify_evidence", verify_evidence_node),
                      ("reconcile", reconcile), ("finalize", finalize), ("failed", failed)]:
-        g.add_node(name, fn)
+        g.add_node(name, traced(name, fn, deps.trace_sink))
     g.add_edge(START, "ingest")
 
     def route(src: str, targets: list[str]):
@@ -188,10 +194,11 @@ def build_graph(deps: Deps):
     return g.compile()
 
 
-def run_invoice(pdf_path: str, deps: Deps, invoice_id: str | None = None) -> ReconciliationResult:
+def run_invoice(pdf_path: str, deps: Deps, invoice_id: str | None = None,
+               run_id: str | None = None) -> ReconciliationResult:
     initial: LedgerState = {"pdf_path": str(pdf_path), "max_revisions": deps.config.max_revisions,
                             "audit_trail": [], "audit_evidence": [], "retrieval_events": [],
-                            "revision": 0}
+                            "revision": 0, "run_id": run_id or uuid.uuid4().hex[:12]}
     if invoice_id:
         initial["invoice_id"] = invoice_id
     limit = 4 * deps.config.max_revisions + 30
