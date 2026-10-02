@@ -67,4 +67,18 @@ Parked for cycle 2 (final-review minors): label/amount in separate PDF text bloc
 - [x] Spec, plan, Wave 0 contracts, six parallel streams (job store, vector backend, API, frontend, trace sinks, eval), integration, whole-branch review (opus) + one fix wave with scoped re-review.
 - Final state: 194 Python tests, 50 frontend tests, `npm run build` OK; real-browser check of upload -> result -> reload -> server restart done on port 8787.
 - [ ] Merge decision (user): `feature/core-loop` and `feature/ui-api-persistence` are unmerged; remote `stream/*` branches still exist on origin.
+
+## UI refactor cycle (mockup parity) — started 2026-10-02
+Source: untracked `scripts/ledger-ui.html` mockup. Process: superpowers brainstorming (architectural path) + impeccable + taste-skill redesign.
+- [x] Context explored: existing `frontend/` is single-page minimalist (rose OKLCH tokens); API serves only health/upload/get/list/trace; `PRODUCT.md` missing (impeccable init needed).
+- [x] Decisions (user): full mockup parity (6 views + bulk upload + Settings); keep mockup identity but de-slop (no glass/gradients/Inter/hero stats); hash router, no new deps; no backend changes (derive or label "Preview").
+- [x] Design approved in chat; spec written: `docs/superpowers/specs/2026-10-02-ui-refactor-design.md` (not yet committed)
+- [x] User approved written spec (2026-10-02)
+- [x] Plan written (9 tasks): `docs/superpowers/plans/2026-10-02-ui-refactor.md`; execution method chosen by user: subagent-driven-development
+- [x] User approved plan; executed via subagent-driven-development on branch `feature/ui-refactor` (off `feature/ui-api-persistence` @ 4c69fa0): 9 tasks, per-task reviews + fix rounds, whole-branch opus review (6 Important) + one fix wave + scoped re-review: all addressed
+- Final state (HEAD 8e5df98): 208 frontend tests (19 files), `npm run build` OK; Python untouched (194 tests); browser-verified 12 routes x 1440/768/390 x light/dark, 0 console errors / failed requests / horizontal scroll; core flow (upload -> corrected -> detail -> replay -> reload) and bulk upload verified on the real stack
+- [ ] Merge decision (user): `feature/ui-refactor` unmerged; `docs/` is gitignored locally (spec/plan not committed)
+- Parked (needs backend): server-side Settings endpoints, PDF serving (Document tab is a ledger reconstruction), stats endpoint (dashboard derives from the jobs list)
+- Parked (frontend minors): shared LoadError component, useJobs request-sequence guard, audit trace refetch on job completion, mb() edge cases, nodeLabel hasOwn, Google Fonts CSP/size-adjusted fallback, impeccable critique/audit/polish ran single-context (no scored snapshot)
+
 - Cycle-3 candidates: rank-based confidence in `ChunkValueProposer` (hybrid/bm25 abstain on the `shipping` eval case), chunked-upload size bound, job pruning/pagination, async I/O in the upload handler, real LLM/embedder adapters, real OCR backend.
