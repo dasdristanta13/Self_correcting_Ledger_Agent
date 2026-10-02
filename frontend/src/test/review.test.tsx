@@ -51,4 +51,18 @@ describe("ReviewView", () => {
     expect(screen.getByRole("tab", { name: /^All/ })).toHaveAttribute("aria-selected", "true");
     expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(2);
   });
+  it("invites an upload instead of claiming success when there are no jobs at all", async () => {
+    vi.mocked(listJobs).mockResolvedValue([]);
+    renderAt("#/review");
+    expect(await screen.findByRole("heading", { name: "No invoices yet" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Upload an invoice" })).toHaveAttribute("href", "#/upload");
+    expect(screen.queryByText("Nothing needs review")).toBeNull();
+  });
+  it("wires the active tab to an existing tabpanel", async () => {
+    renderAt("#/review");
+    const tab = await screen.findByRole("tab", { name: /^All/ });
+    const panel = document.getElementById(tab.getAttribute("aria-controls")!);
+    expect(panel).not.toBeNull();
+    expect(panel).toHaveAttribute("role", "tabpanel");
+  });
 });

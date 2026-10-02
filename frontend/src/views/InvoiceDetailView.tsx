@@ -44,10 +44,14 @@ export function InvoiceDetailView({ id, tab }: { id: string; tab: DetailTab }) {
       actions={tab === "reconciliation" && job.state === "DONE" ? <button type="button" className="btn" onClick={() => setReplay((n) => n + 1)}>Replay agent</button> : undefined} />
   );
   if (job.state === "QUEUED" || job.state === "RUNNING") {
-    return (<>{head}<div role="status" className="progress"><p>Reconciling {job.filename}. This usually takes a few seconds.</p><span className="working-bar" aria-hidden="true" /></div></>);
+    return (<>{head}<div role="status" className="progress"><p>Reconciling {job.filename}. This usually takes a few seconds.</p>{error && <p role="status" className="muted">Reconnecting…</p>}<span className="working-bar" aria-hidden="true" /></div></>);
   }
   if (job.state === "ERROR") {
     return (<>{head}<p role="alert" className="field-error">Processing stopped because of a problem on our side, not with the invoice: {job.error ?? "unknown error"}. Upload it again to retry.</p>
+      <section className="panel"><h2>Agent activity</h2><AgentTimeline jobId={job.job_id} replayKey={0} /></section></>);
+  }
+  if (!job.result) {
+    return (<>{head}<EmptyState title="No result was recorded">The service finished this job without a result. Upload the invoice again to retry.</EmptyState>
       <section className="panel"><h2>Agent activity</h2><AgentTimeline jobId={job.job_id} replayKey={0} /></section></>);
   }
   return (

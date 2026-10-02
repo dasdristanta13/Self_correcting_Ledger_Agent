@@ -17,6 +17,7 @@ export function parseHash(hash: string): Route {
   if (head === "invoices" && rawId !== undefined) {
     let id: string;
     try { id = decodeURIComponent(rawId); } catch { return NOT_FOUND; }
+    if (!id) return NOT_FOUND;
     if (rawTab === undefined) return { name: "detail", id, tab: "document" };
     return (TABS as string[]).includes(rawTab) ? { name: "detail", id, tab: rawTab as DetailTab } : NOT_FOUND;
   }

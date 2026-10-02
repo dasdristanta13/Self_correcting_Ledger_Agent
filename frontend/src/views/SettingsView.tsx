@@ -4,7 +4,7 @@ import { Switch } from "../components/ui/Switch";
 import { Tabs, tabIds } from "../components/ui/Tabs";
 import { defaultSettings, loadSettings, saveSettings, SETTING_GROUPS, type SettingValue } from "../lib/settings";
 
-const FAIL = "Couldn't save in this browser. Your changes apply to this session only.";
+const FAIL = "Couldn't save in this browser. Your changes will be lost when you leave this page.";
 
 export function SettingsView() {
   const [saved, setSaved] = useState(loadSettings);

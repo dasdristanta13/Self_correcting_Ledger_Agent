@@ -3,7 +3,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Pill } from "../components/ui/Pill";
 import { LoadingRows } from "../components/ui/Skeleton";
-import { Tabs } from "../components/ui/Tabs";
+import { Tabs, tabIds } from "../components/ui/Tabs";
 import { useJobs } from "../hooks/useJobs";
 import { needsReview, priorityOf, stopReason, type Priority } from "../lib/derive";
 import { formatDateTime, formatMoney } from "../lib/format";
@@ -20,6 +20,9 @@ export function ReviewView() {
   if (error && jobs.length === 0) {
     return (<>{header}<p role="alert" className="field-error">{error} <button type="button" className="btn" onClick={refresh}>Try again</button></p></>);
   }
+  if (jobs.length === 0) {
+    return (<>{header}<EmptyState title="No invoices yet" action={<a className="btn btn-primary" href="#/upload">Upload an invoice</a>}>Upload an invoice and anything the agent could not reconcile will appear here.</EmptyState></>);
+  }
   const queue = needsReview(jobs);
   if (queue.length === 0) {
     return (<>{header}<EmptyState title="Nothing needs review">Every processed invoice reconciled.</EmptyState></>);
@@ -33,6 +36,7 @@ export function ReviewView() {
       <Tabs label="Filter by stop reason" value={active} onChange={setReason} idBase="rev"
         tabs={[{ id: "all", label: "All", count: queue.length },
           ...reasons.map((r) => ({ id: r, label: statusCopy(r).label, count: queue.filter((j) => stopReason(j) === r).length }))]} />
+      <div role="tabpanel" id={tabIds("rev", active).panel} aria-labelledby={tabIds("rev", active).tab}>
       <section className="panel panel-flush">
         <div className="table-scroll" tabIndex={0} role="region" aria-label="Review queue">
           <table className="data">
@@ -58,6 +62,7 @@ export function ReviewView() {
         </div>
       </section>
       <p className="muted note">Priority is a rule of thumb derived from the stop reason, not a stored field.</p>
+      </div>
     </>
   );
 }

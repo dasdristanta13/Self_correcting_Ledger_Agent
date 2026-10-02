@@ -11,7 +11,7 @@ describe("parseHash", () => {
     ["#/invoices/abc/reconciliation", { name: "detail", id: "abc", tab: "reconciliation" }],
   ])("%j", (hash, route) => expect(parseHash(hash)).toEqual(route));
 
-  it.each(["#/nope", "#/invoices/abc/bogus", "#/invoices/abc/document/extra", "#/upload/x"])("%s is not found", (h) =>
+  it.each(["#/nope", "#/invoices/abc/bogus", "#/invoices/abc/document/extra", "#/upload/x", "#/invoices//document", "#/invoices//extracted"])("%s is not found", (h) =>
     expect(parseHash(h)).toEqual({ name: "notfound" }));
 
   it("survives a malformed percent-escape (Review Focus 3)", () => {

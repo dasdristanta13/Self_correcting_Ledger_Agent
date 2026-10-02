@@ -106,4 +106,24 @@ describe("AgentTimeline", () => {
     render(<AgentTimeline jobId="j" replayKey={0} />);
     expect(await screen.findByText("No trace was recorded for this job.")).toBeInTheDocument();
   });
+  it("shows an empty state instead of crashing for a DONE job with no result", async () => {
+    vi.mocked(getJob).mockResolvedValue({ ...done, state: "DONE", result: null });
+    renderAt(`${url}/document`);
+    expect(await screen.findByRole("heading", { name: "No result was recorded" })).toBeInTheDocument();
+    expect(screen.getByText(/finished this job without a result/)).toBeInTheDocument();
+  });
+  it("keeps showing a Reconnecting hint when polling fails after a job was cached", async () => {
+    vi.mocked(getJob).mockResolvedValueOnce({ ...done, state: "RUNNING", result: null, finished_at: null }).mockRejectedValue(new Error("down"));
+    renderAt(`${url}/document`);
+    expect(await screen.findByText(/Reconciling INV-001\.pdf/)).toBeInTheDocument();
+    expect(await screen.findByText("Reconnecting…", {}, { timeout: 4000 })).toBeInTheDocument();
+  });
+  it("flags a corrected unit price on the extracted tab", async () => {
+    vi.mocked(getJob).mockResolvedValue({ ...done, result: { ...done.result!, corrections: [{ ...done.result!.corrections[0], field: "items[line_02].unit_price" }] } });
+    renderAt(`${url}/extracted`);
+    const row = (await screen.findByText("Gasket")).closest("tr")!;
+    expect(within(row).getByText("Corrected")).toBeInTheDocument();
+    expect(within(row.querySelectorAll("td")[2] as HTMLElement).getByText("Corrected")).toBeInTheDocument();
+    expect(within(row.querySelectorAll("td")[3] as HTMLElement).queryByText("Corrected")).toBeNull();
+  });
 });

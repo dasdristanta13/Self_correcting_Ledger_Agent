@@ -81,4 +81,23 @@ describe("BulkUpload", () => {
     await act(async () => { finish(); });
     await waitFor(() => expect(within(screen.getByRole("table")).getByRole("link", { name: "Reconciled" })).toBeInTheDocument());
   });
+  it("refreshes the job list as soon as an upload resolves, not only after the whole pool", async () => {
+    const resolvers: (() => void)[] = [];
+    vi.mocked(uploadInvoice).mockImplementation(() => new Promise((res) => { resolvers.push(() => res({ job_id: done.job_id, status: "QUEUED" })); }));
+    await openBulk();
+    await userEvent.upload(screen.getByLabelText(/drop invoice pdfs/i), [pdf("1.pdf"), pdf("2.pdf")]);
+    await userEvent.click(screen.getByRole("button", { name: "Reconcile all" }));
+    await waitFor(() => expect(uploadInvoice).toHaveBeenCalledTimes(2));
+    const before = vi.mocked(listJobs).mock.calls.length;
+    await act(async () => { resolvers[0](); });
+    await waitFor(() => expect(vi.mocked(listJobs).mock.calls.length).toBeGreaterThan(before));
+  });
+  it("wires the active upload tab to an existing tabpanel in both modes", async () => {
+    renderAt("#/upload");
+    const single = await screen.findByRole("tab", { name: "Single invoice" });
+    expect(document.getElementById(single.getAttribute("aria-controls")!)).toHaveAttribute("role", "tabpanel");
+    await userEvent.click(screen.getByRole("tab", { name: "Bulk upload" }));
+    const bulk = screen.getByRole("tab", { name: "Bulk upload" });
+    expect(document.getElementById(bulk.getAttribute("aria-controls")!)).toHaveAttribute("role", "tabpanel");
+  });
 });

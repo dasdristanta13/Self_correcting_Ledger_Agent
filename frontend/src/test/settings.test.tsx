@@ -82,7 +82,7 @@ describe("SettingsView", () => {
     const save = screen.getByRole("button", { name: "Save changes" });
     await userEvent.click(save);
     expect(screen.getByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("Couldn't save in this browser. Your changes apply to this session only.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Couldn't save in this browser. Your changes will be lost when you leave this page.");
     expect(screen.queryByText("Saved in this browser")).not.toBeInTheDocument();
     expect(save).toBeEnabled();
   });

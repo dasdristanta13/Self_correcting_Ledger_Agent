@@ -5,7 +5,7 @@ import { DropZone } from "../components/DropZone";
 import { RecentJobs } from "../components/RecentJobs";
 import { ResultView } from "../components/ResultView";
 import { PageHeader } from "../components/ui/PageHeader";
-import { Tabs } from "../components/ui/Tabs";
+import { Tabs, tabIds } from "../components/ui/Tabs";
 import { useJob, JOB_NOT_FOUND } from "../hooks/useJob";
 import { useJobs } from "../hooks/useJobs";
 import { detailHref, navigate } from "../router";
@@ -43,8 +43,8 @@ export function UploadView() {
       <PageHeader title="Upload invoice" sub="Drop a PDF to extract, validate and reconcile it automatically." />
       <Tabs label="Upload mode" value={mode} onChange={(id) => setMode(id as "single" | "bulk")} idBase="up"
         tabs={[{ id: "single", label: "Single invoice" }, { id: "bulk", label: "Bulk upload" }]} />
-      <div hidden={mode !== "bulk"}><BulkUpload /></div>
-      {mode === "single" && (<>
+      <div hidden={mode !== "bulk"} {...(mode === "bulk" ? { role: "tabpanel", id: tabIds("up", mode).panel, "aria-labelledby": tabIds("up", mode).tab } : {})}><BulkUpload /></div>
+      {mode === "single" && (<div role="tabpanel" id={tabIds("up", mode).panel} aria-labelledby={tabIds("up", mode).tab}>
         <DropZone onFile={handleFile} disabled={busy} />
         <div className="activity">
           {uploadPct !== null && (
@@ -63,7 +63,7 @@ export function UploadView() {
           {pollError && job && working && <p role="status" className="muted">Reconnecting…</p>}
         </div>
         {job && <ResultView job={job} />}
-      </>)}
+      </div>)}
       <RecentJobs jobs={jobs.slice(0, 8)} selected={jobId} onSelect={(id) => navigate(detailHref(id))} />
     </>
   );

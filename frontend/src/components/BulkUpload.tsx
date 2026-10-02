@@ -48,6 +48,7 @@ export function BulkUpload() {
       patch(r.id, { stage: "uploading", pct: 0, message: undefined });
       try {
         const { job_id } = await uploadInvoice(r.file, (pct) => patch(r.id, { pct }));
+        refresh();
         patch(r.id, { stage: "reconciling", pct: 100 });
         const job = await pollJob(job_id);
         patch(r.id, job.state === "ERROR"
@@ -57,7 +58,8 @@ export function BulkUpload() {
         patch(r.id, { stage: "failed", message: e instanceof Error ? e.message : "Upload failed." });
       }
     });
-    if (alive.current) { setRunning(false); refresh(); }
+    if (alive.current) setRunning(false);
+    refresh();
   }
 
   const complete = rows.filter((r) => r.stage === "done" || r.stage === "failed").length;

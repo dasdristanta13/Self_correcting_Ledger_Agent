@@ -8,6 +8,7 @@ export function useTraces(jobs: Job[], max = 10) {
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(0);
+  const [attempt, setAttempt] = useState(0);
   const recent = jobs.slice(0, max);
   const key = recent.map((j) => j.job_id).join(",");
 
@@ -28,7 +29,8 @@ export function useTraces(jobs: Job[], max = 10) {
     });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, attempt]);
 
-  return { rows, loading, failed };
+  const retry = () => setAttempt((n) => n + 1);
+  return { rows, loading, failed, retry };
 }

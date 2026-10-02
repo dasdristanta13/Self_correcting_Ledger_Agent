@@ -66,4 +66,13 @@ describe("AuditView", () => {
     expect(screen.getByRole("combobox", { name: "Invoice" })).toHaveValue("all");
     expect(within(screen.getByRole("table")).getAllByRole("row").length).toBeGreaterThan(1);
   });
+  it("offers a retry when every trace failed to load", async () => {
+    vi.mocked(getTrace).mockRejectedValue(new Error("nope"));
+    renderAt("#/audit");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load agent activity.");
+    vi.mocked(getTrace).mockResolvedValue([ev("ingest", "2026-10-02T09:00:00Z")]);
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(screen.getAllByText("Read document").length).toBeGreaterThan(0);
+  });
 });

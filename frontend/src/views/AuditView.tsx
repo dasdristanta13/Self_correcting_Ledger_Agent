@@ -9,7 +9,7 @@ import { detailHref } from "../router";
 
 export function AuditView() {
   const { jobs, loading: jobsLoading, error, refresh } = useJobs();
-  const { rows, loading, failed } = useTraces(jobs);
+  const { rows, loading, failed, retry } = useTraces(jobs);
   const [only, setOnly] = useState("all");
   const header = <PageHeader title="Audit trail" sub="What the agent did, step by step, across your most recent invoices." />;
   if (jobsLoading || loading) return <>{header}<LoadingRows /></>;
@@ -19,6 +19,9 @@ export function AuditView() {
   if (jobs.length === 0 || (rows.length === 0 && failed === 0)) {
     return (<>{header}<EmptyState title="No activity yet" action={<a className="btn btn-primary" href="#/upload">Upload an invoice</a>}>
       Agent steps appear here once an invoice has been processed.</EmptyState></>);
+  }
+  if (rows.length === 0) {
+    return (<>{header}<p role="alert" className="field-error">Could not load agent activity. <button type="button" className="btn" onClick={retry}>Try again</button></p></>);
   }
   const ids = [...new Map(rows.map((r) => [r.job.job_id, r.job.filename])).entries()];
   const activeOnly = ids.some(([id]) => id === only) ? only : "all";
