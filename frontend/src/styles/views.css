@@ -67,9 +67,11 @@ select { padding: var(--s2) var(--s3); border: 1px solid var(--line-strong); bor
 .pad-h { padding: var(--s5) var(--s5) 0; font-size: var(--text-base); font-weight: 600; }
 .tight { margin-bottom: var(--s3); font-size: var(--text-sm); }
 
-.paper { padding: var(--s6); border-radius: var(--radius); background: #fff; color: #1a1d2e; box-shadow: var(--shadow); }
-.paper .ledger { color: #1a1d2e; }
-.paper .ledger thead th, .paper .muted { color: #55586f; }
+.paper {
+  --ink: oklch(0.22 0.025 275); --muted: oklch(0.46 0.035 275); --line: oklch(0.91 0.01 275); --line-strong: oklch(0.62 0.02 275);
+  --sunk: oklch(0.955 0.01 275); --accent: oklch(0.5 0.19 275); --accent-wash: oklch(0.95 0.03 275); --surface: oklch(1 0 0);
+  padding: var(--s6); border-radius: var(--radius); background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+}
 .paper-head { display: flex; justify-content: space-between; gap: var(--s3); margin-bottom: var(--s4); }
 .paper-head strong { display: block; font-size: var(--text-lg); }
 .paper-note { margin-top: var(--s4); font-size: var(--text-xs); }

@@ -50,6 +50,32 @@ it("non-text line-strong is at least 3:1 against surface in both themes", () => 
   expect(contrast(darkMedia.get("--line-strong")!, darkMedia.get("--surface")!)).toBeGreaterThanOrEqual(3);
 });
 
+describe(".paper holds its own light token scope", () => {
+  const views = readFileSync(join(__dirname, "../styles/views.css"), "utf8");
+  const rule = views.match(/(?:^|\n)\.paper\s*\{([^}]*)\}/)![1];
+  const own = decls(rule);
+  it("overrides every colour token with the light-theme value", () => {
+    for (const k of ["--ink", "--muted", "--line", "--line-strong", "--sunk", "--accent", "--accent-wash", "--surface"]) {
+      expect(own.get(k), k).toBe(light.get(k));
+    }
+    expect(rule).toMatch(/background:\s*var\(--surface\)/);
+    expect(rule).toMatch(/color:\s*var\(--ink\)/);
+  });
+  it("contains no hex colours, and nothing under it hard-codes one", () => {
+    expect(views).not.toMatch(/\.paper[^{]*\{[^}]*#[0-9a-fA-F]{3,8}\b/);
+    expect(rule).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+  });
+  it.each([["--ink", "--surface"], ["--muted", "--surface"], ["--accent", "--accent-wash"]])("%s on %s is at least 4.5:1", (fg, bg) => {
+    expect(contrast(own.get(fg)!, own.get(bg)!)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+it("shell.css carries no literal colours; shadow-sm exists in all three blocks", () => {
+  const shell = readFileSync(join(__dirname, "../styles/shell.css"), "utf8");
+  expect(shell).not.toMatch(/oklch\(/);
+  expect(light.has("--shadow-sm") && darkMedia.has("--shadow-sm") && darkForced.has("--shadow-sm")).toBe(true);
+});
+
 it("the forced-dark block is identical to the OS-dark block", () => {
   expect([...darkForced]).toEqual([...darkMedia]);
 });

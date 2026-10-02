@@ -31,7 +31,7 @@
 .theme { display: flex; gap: 2px; padding: 2px; border-radius: var(--radius-sm); background: var(--sunk); }
 .theme button { flex: 1; padding: var(--s1) var(--s2); border: 0; border-radius: 4px; background: transparent; color: var(--muted); font: inherit; font-size: var(--text-xs); cursor: pointer; }
 .theme button:hover { color: var(--ink); }
-.theme button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px oklch(0.3 0.05 275 / 0.15); }
+.theme button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
 
 .main { min-width: 0; padding: var(--s6) var(--s6) var(--s8); }
 .main:focus { outline: none; }
