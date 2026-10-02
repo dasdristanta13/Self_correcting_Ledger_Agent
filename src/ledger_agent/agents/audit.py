@@ -3,7 +3,7 @@ import math
 from dataclasses import dataclass
 from typing import Protocol
 
-from ledger_agent.models import Chunk, Discrepancy, Evidence, Ledger, ScoredChunk
+from ledger_agent.models import Chunk, Discrepancy, Evidence, Ledger, Provenance, ScoredChunk
 from ledger_agent.money import parse_money
 from ledger_agent.paths import PathRef, parse_path
 from ledger_agent.protocols import LLMClient
@@ -112,8 +112,27 @@ class LLMProposer:
         return out
 
 
+def _recorded_source(ledger: Ledger, ref: PathRef) -> Provenance | None:
+    if ref.kind == "item":
+        item = next((i for i in ledger.items if i.id == ref.id), None)
+        return item.source.get(ref.attr) if item else None
+    if ref.kind == "tax":
+        line = next((t for t in ledger.tax_lines if t.id == ref.id), None)
+        return line.source.get("amount") if line else None
+    return ledger.sources.get(ref.attr)
+
+
+def _matches_ledger_source(ledger: Ledger, ref: PathRef, chunk: Chunk) -> bool:
+    rec = _recorded_source(ledger, ref)
+    if rec is None:                 # no provenance recorded (hand-built ledger): nothing to tie to
+        return True
+    if ref.kind == "item":
+        return (rec.page, rec.table_id, rec.row) == (chunk.page, chunk.table_id, chunk.row_id)
+    return (rec.page, rec.block_id) == (chunk.page, chunk.provenance.block_id)
+
+
 def verify_evidence(ev: Evidence, discrepancy: Discrepancy, chunks: list[ScoredChunk],
-                    invoice_id: str, threshold: float) -> str | None:
+                    invoice_id: str, threshold: float, ledger: Ledger | None = None) -> str | None:
     if ev.field not in discrepancy.related_fields:
         return "field not related to discrepancy"
     chunk = next((s.chunk for s in chunks if s.chunk.chunk_id == ev.chunk_id), None)
@@ -134,13 +153,16 @@ def verify_evidence(ev: Evidence, discrepancy: Discrepancy, chunks: list[ScoredC
         return "value does not match chunk"
     if not (math.isfinite(ev.confidence) and 0 <= ev.confidence <= 1 and ev.confidence >= threshold):
         return f"confidence {ev.confidence:.2f} below threshold {threshold:.2f}"
+    if ledger is not None and not _matches_ledger_source(ledger, ref, chunk):
+        return "source location differs from the ledger's recorded source"
     return None
 
 
-def verify_candidates(cand: AuditCandidates, invoice_id: str, threshold: float):
+def verify_candidates(cand: AuditCandidates, invoice_id: str, threshold: float,
+                      ledger: Ledger | None = None):
     ok: list[Evidence] = []
     rejected: list[tuple[Evidence, str]] = []
     for ev in cand.evidence:
-        reason = verify_evidence(ev, cand.discrepancy, cand.retrieved, invoice_id, threshold)
+        reason = verify_evidence(ev, cand.discrepancy, cand.retrieved, invoice_id, threshold, ledger)
         (rejected.append((ev, reason)) if reason else ok.append(ev))
     return ok, rejected

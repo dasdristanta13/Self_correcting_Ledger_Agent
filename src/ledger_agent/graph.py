@@ -118,7 +118,8 @@ def build_graph(deps: Deps):
         verified: list[Evidence] = []
         events = list(state.get("retrieval_events", []))
         for cand in state["audit_candidates"]:
-            ok, rejected = verify_candidates(cand, state["invoice_id"], cfg.confidence_threshold)
+            ok, rejected = verify_candidates(cand, state["invoice_id"], cfg.confidence_threshold,
+                                          state["ledger"])
             verified += ok
             events.append({
                 "revision": state["revision"], "field": cand.discrepancy.field, "query": cand.query,

@@ -85,3 +85,32 @@ def test_verifier_rejects_nan_confidence():
     ev = next(e for e in cand.evidence if e.field == "items[line_01].amount")
     bad = Evidence.model_construct(**{**ev.__dict__, "confidence": float("nan")})
     assert "confidence" in verify_evidence(bad, d, cand.retrieved, "INV-001", 0.90)
+
+
+def test_verifier_ties_evidence_to_the_ledger_rows_recorded_source():
+    _, ledger, d, idx = setup()
+    cand = retrieve_and_propose(d, ledger, idx, ChunkValueProposer(), k=5)
+    ev = next(e for e in cand.evidence if e.field == "items[line_01].amount")
+    assert verify_evidence(ev, d, cand.retrieved, "INV-001", 0.90, ledger) is None
+    item = ledger.items[0]
+    moved = item.model_copy(update={"source": {"amount": item.source["amount"].model_copy(update={"row": 2})}})
+    bad = ledger.model_copy(update={"items": [moved, *ledger.items[1:]]})
+    assert "source" in verify_evidence(ev, d, cand.retrieved, "INV-001", 0.90, bad)
+    ok, rejected = verify_candidates(cand, "INV-001", 0.90, bad)
+    assert all(e.field != "items[line_01].amount" for e in ok) and rejected
+    no_prov = ledger.model_copy(update={"items": [item.model_copy(update={"source": {}}), *ledger.items[1:]]})
+    assert verify_evidence(ev, d, cand.retrieved, "INV-001", 0.90, no_prov) is None
+
+def test_verifier_ties_scalar_evidence_to_recorded_block():
+    from ledger_agent.models import Provenance
+    doc = make_document()
+    ledger = make_ledger().model_copy(update={"total": D("1.00")})
+    d = validate(ledger, ValidationRules())[0]
+    idx = build_index(doc, EMB)
+    cand = retrieve_and_propose(d, ledger, idx, ChunkValueProposer(), k=5)
+    ev = next(e for e in cand.evidence if e.field == "total")
+    chunk = next(s.chunk for s in cand.retrieved if s.chunk.chunk_id == ev.chunk_id)
+    good = Provenance(document_id="INV-001", page=chunk.page, block_id=chunk.provenance.block_id)
+    other = good.model_copy(update={"block_id": "p1_b99"})
+    assert verify_evidence(ev, d, cand.retrieved, "INV-001", 0.90, ledger.model_copy(update={"sources": {"total": good}})) is None
+    assert "source" in verify_evidence(ev, d, cand.retrieved, "INV-001", 0.90, ledger.model_copy(update={"sources": {"total": other}}))
