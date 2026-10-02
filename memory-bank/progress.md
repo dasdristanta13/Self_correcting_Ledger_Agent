@@ -38,12 +38,17 @@ All tests cited were verified to exist (grep) and pass in the fresh 81-test run.
 - [x] Infinite loops are impossible - `test_graph.py::test_no_progress_terminates`, `::test_max_revisions_terminates`, `::test_zero_revisions_allowed_blocks_correction`; `test_guards.py::test_no_progress_takes_priority_over_max`
 - [x] Low-confidence corrections terminate safely - `test_graph.py::test_weak_evidence_is_insufficient`, `test_reconciliation.py::test_gate_rejects_nan_confidence_and_nan_threshold`, `test_audit.py::test_verifier_rejects_nan_confidence`
 - [~] Final output includes evidence and revision history - `ReconciliationResult` carries `corrections`, `evidence`, `original_ledger`; tests assert corrections, provenance and original ledger (`test_line_amount_extraction_error_is_corrected_with_provenance`) but none asserts the contents of the `evidence` list.
-- [ ] Retrieval and correction accuracy are evaluated - cycle 2 (retrospective evaluation metrics; only scenario tests exist)
-- [ ] No-RAG, vector-RAG, and hybrid-RAG baselines are compared - cycle 2 (retrieval modes exist and are unit-tested; no comparison harness)
-- [ ] Full execution is observable through traces - cycle 2 (observability; only in-state `audit_trail`/`retrieval_events`)
+- [x] Retrieval and correction accuracy are evaluated - `tests/eval/test_eval_metrics.py::test_metrics_correct_and_false_correction`, `tests/eval/test_eval_run.py::test_run_produces_three_variants_plus_bm25_and_hybrid_is_safest`, `::test_reports_render` (`python -m ledger_agent.eval`; table in README). Caveat: 16 synthetic cases.
+- [~] No-RAG, vector-RAG, and hybrid-RAG baselines are compared - harness and results: `test_eval_run.py::test_run_produces_three_variants_plus_bm25_and_hybrid_is_safest`, `test_eval_metrics.py::test_no_rag_trusts_arithmetic_even_when_the_invoice_is_right`. Gap: `no_rag` is an arithmetic-trust stand-in, not a real LLM.
+- [x] Full execution is observable through traces - `tests/observability/test_sinks.py::test_full_run_is_traced_to_log_and_store`, `tests/unit/test_seams.py::test_graph_emits_one_ordered_trace_event_per_node`, `tests/api/test_api.py::test_trace_endpoint_returns_stored_events`. Gap: LangSmith export is env-var opt-in and untested here.
 
-## Cycle 2 (deferred)
-Persistence (SQLite/PostgreSQL), observability/traces (Opik/LangSmith), No-RAG vs Vector vs Hybrid baseline comparison, retrospective evaluation metrics, real scanned-OCR backend, real-LLM adapter, FastAPI.
+## Cycle 2 (ui-api-persistence) status
+Done: FastAPI service, ChromaDB persistence (jobs/events/per-invoice vectors), trace sinks, eval harness, React UI, run scripts, README. Verified in a headless browser against the real stack (clean invoice RECONCILED, wrong printed amount UNRESOLVED / "Needs review", reload and uvicorn restart keep both jobs in Recent).
+- Persistence: `tests/e2e/test_e2e.py::test_jobs_survive_restart_and_interrupted_jobs_become_errors`
+- No Chroma leaks: `test_e2e.py::test_upload_correct_trace_and_no_leftover_collections`, `tests/vector/test_chroma_vector.py::test_dispose_deletes_the_collection_and_is_idempotent`, `::test_sweep_removes_orphans_but_not_other_collections`
+- Unsafe uploads: `tests/api/test_api.py::test_text_file_named_pdf_is_rejected_415`, `::test_oversize_upload_is_413`
+- Concurrency: `test_api.py::test_concurrent_uploads_do_not_mix_invoices`, `test_e2e.py::test_concurrent_uploads_keep_invoices_apart`
+Remaining gaps: real scanned-OCR backend, real-LLM adapter and embedder (offline defaults only), SQL stores, `shipping` eval case abstains for bm25/hybrid (rank>=3 confidence 0.80 < 0.90), frontend polish (XHR abort/timeout, non-JSON 413, 'Reconnecting...' hint), UI shows raw "Tax 0.1" label and lowercase reason text.
 
 ## Decisions and known limits
 - 2026-10-02: Cycle 1 = core loop only. Approach A. LLM/Embedder behind protocols with offline fakes. Decimal-only money.
