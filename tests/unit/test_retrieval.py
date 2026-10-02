@@ -54,3 +54,25 @@ def test_dispose():
     idx.dispose()
     with pytest.raises(IndexDisposedError):
         idx.search("INV-001", "total")
+
+
+def test_summary_cells_become_chunks_with_table_provenance():
+    from ledger_agent.retrieval.chunks import build_chunks
+    from ledger_agent.testing.ledgers import make_net_worth_document
+    chunks = build_chunks(make_net_worth_document())
+    by_field = {c.field: c for c in chunks if c.field}
+    assert by_field["total"].values == {"amount": "277163.70"} and by_field["total"].chunk_type == "totals"
+    assert (by_field["total"].table_id, by_field["total"].row_id) == ("table_02", 2)
+    assert by_field["total"].provenance.column == "Gross Worth"
+    tax = next(c for c in chunks if c.chunk_type == "tax")
+    assert tax.item_id == "tax_01" and tax.values == {"amount": "25196.70"}
+
+
+def test_text_total_suppresses_summary_total_chunk():
+    from ledger_agent.models import TextBlock
+    from ledger_agent.retrieval.chunks import build_chunks
+    from ledger_agent.testing.ledgers import make_net_worth_document
+    doc = make_net_worth_document()
+    doc.text_blocks.append(TextBlock(block_id="p1_b0", page=1, text="Total: $277,163.70", bbox=[0, 200, 50, 210]))
+    totals = [c for c in build_chunks(doc) if c.field == "total"]
+    assert len(totals) == 1 and totals[0].table_id is None

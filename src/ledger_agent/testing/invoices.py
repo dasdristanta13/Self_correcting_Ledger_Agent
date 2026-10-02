@@ -24,6 +24,7 @@ class InvoiceSpec:
     printed_subtotal: Decimal | None = None
     printed_taxes: tuple[Decimal | None, ...] = ()
     printed_total: Decimal | None = None
+    layout: str = "labeled"
 
     def resolved(self):
         amounts = [i.printed_amount if i.printed_amount is not None
@@ -66,6 +67,29 @@ def render_invoice(spec: InvoiceSpec, path) -> Path:
 
     amounts, subtotal, taxes, total = spec.resolved()
     styles = getSampleStyleSheet()
+    if spec.layout == "net_worth":
+        if spec.discount or spec.shipping or len(spec.tax_rates) != 1:
+            raise ValueError("net_worth layout supports one tax rate, no discount or shipping")
+        rate = spec.tax_rates[0]
+        pct = f"{(rate * 100).normalize():f}%"
+        head = ["No.", "Description", "Qty", "UM", "Net Price", "Net Worth", "VAT %", "Gross Worth"]
+        rows = [head] + [[f"{n}.", it.description, f"{it.quantity:.2f}", "pcs", f"{it.unit_price:,.2f}",
+                          f"{amt:,.2f}", pct, f"{q2(amt * (1 + rate)):,.2f}"]
+                         for n, (it, amt) in enumerate(zip(spec.items, amounts), start=1)]
+        tax = taxes[0][1]
+        summ = [["", "VAT %", "Net Worth", "VAT", "Gross Worth"],
+                ["", pct, f"{subtotal:,.2f}", f"{tax:,.2f}", f"{total:,.2f}"],
+                ["Total", "", f"{spec.currency} {subtotal:,.2f}", f"{spec.currency} {tax:,.2f}",
+                 f"{spec.currency} {total:,.2f}"]]
+        grid = TableStyle([("GRID", (0, 0), (-1, -1), 0.5, colors.black)])
+        t1, t2 = Table(rows), Table(summ)
+        t1.setStyle(grid)
+        t2.setStyle(grid)
+        path = Path(path)
+        SimpleDocTemplate(str(path), pagesize=letter).build(
+            [Paragraph(f"Invoice no: {spec.invoice_id}", styles["Title"]), Paragraph("ITEMS", styles["Normal"]),
+             t1, Spacer(1, 18), Paragraph("SUMMARY", styles["Normal"]), t2])
+        return path
     flow = [Paragraph(f"Invoice #{spec.invoice_id}", styles["Title"]),
             Paragraph(f"Currency: {spec.currency}", styles["Normal"]), Spacer(1, 12)]
     data = [["Description", "Qty", "Unit Price", "Amount"]]

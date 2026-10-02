@@ -62,6 +62,10 @@ Remaining gaps: real scanned-OCR backend, real-LLM adapter and embedder (offline
 ## Open issues
 Parked for cycle 2 (final-review minors): label/amount in separate PDF text blocks, wider currency symbols, fuzzy header matching (e.g. 'Unit Price (USD)'), `low_quality` flag unused, mixed native/scanned document silently omits scanned pages (no warning recorded), headerless-continuation heuristic can ingest a same-width non-item table.
 
+- Summary tables (Net Worth/VAT/Gross Worth) supported; multi-rate summaries drop per-rate checking.
+
+- Currency suffixes/symbols other than a 3-letter prefix (e.g. '220.00 INR', 'Rs. 220.00' - parse_money raises on 'Rs.') are not handled in summary tables; rate row with blank VAT cell drops tax; summary labels outside column 0 unsupported.
+
 
 ## UI / API / persistence cycle (branch `feature/ui-api-persistence`)
 - [x] Spec, plan, Wave 0 contracts, six parallel streams (job store, vector backend, API, frontend, trace sinks, eval), integration, whole-branch review (opus) + one fix wave with scoped re-review.
@@ -77,6 +81,7 @@ Source: untracked `scripts/ledger-ui.html` mockup. Process: superpowers brainsto
 - [x] Plan written (9 tasks): `docs/superpowers/plans/2026-10-02-ui-refactor.md`; execution method chosen by user: subagent-driven-development
 - [x] User approved plan; executed via subagent-driven-development on branch `feature/ui-refactor` (off `feature/ui-api-persistence` @ 4c69fa0): 9 tasks, per-task reviews + fix rounds, whole-branch opus review (6 Important) + one fix wave + scoped re-review: all addressed
 - Final state (HEAD 8e5df98): 208 frontend tests (19 files), `npm run build` OK; Python untouched (194 tests); browser-verified 12 routes x 1440/768/390 x light/dark, 0 console errors / failed requests / horizontal scroll; core flow (upload -> corrected -> detail -> replay -> reload) and bulk upload verified on the real stack
+- Fix: net-worth invoice layout (branch fix/net-worth-layout): Net Price/Net Worth synonyms, summary-table reader, summary chunks + provenance-aware evidence matching; real fixtures in tests/fixtures/net_worth/.
 - [ ] Merge decision (user): `feature/ui-refactor` unmerged; `docs/` is gitignored locally (spec/plan not committed)
 - Parked (needs backend): server-side Settings endpoints, PDF serving (Document tab is a ledger reconstruction), stats endpoint (dashboard derives from the jobs list)
 - Parked (frontend minors): shared LoadError component, useJobs request-sequence guard, audit trace refetch on job completion, mb() edge cases, nodeLabel hasOwn, Google Fonts CSP/size-adjusted fallback, impeccable critique/audit/polish ran single-context (no scored snapshot)
