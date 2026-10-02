@@ -57,31 +57,6 @@ p {
   color: var(--muted);
 }
 
-/* ---------- Page ---------- */
-
-.page {
-  width: 100%;
-  max-width: 44rem;
-  margin-inline: auto;
-  padding: var(--s7) var(--gutter) var(--s8);
-}
-
-.masthead {
-  margin-bottom: var(--s6);
-}
-
-.masthead h1 {
-  font-size: var(--text-xl);
-  font-weight: 650;
-  letter-spacing: -0.02em;
-}
-
-.lede {
-  margin-top: var(--s2);
-  max-width: 52ch;
-  color: var(--muted);
-}
-
 /* ---------- Drop zone ---------- */
 
 .dropzone {
@@ -91,6 +66,7 @@ p {
   padding: var(--s7) var(--s5);
   border: 1.5px dashed var(--line-strong);
   border-radius: var(--radius);
+  background: var(--surface);
   text-align: center;
   cursor: pointer;
   transition:
@@ -120,7 +96,7 @@ p {
 
 .dropzone.is-disabled:hover {
   border-color: var(--line-strong);
-  background: transparent;
+  background: var(--surface);
 }
 
 input:focus-visible + .dropzone {
@@ -694,9 +670,6 @@ pre {
 }
 
 @media (max-width: 30rem) {
-  .page {
-    padding-top: var(--s6);
-  }
   .dropzone {
     padding: var(--s6) var(--s4);
   }

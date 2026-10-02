@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import example from "@contracts/example-job.json";
@@ -102,6 +102,7 @@ describe("ResultView", () => {
 
 describe("App", () => {
   beforeEach(() => {
+    window.location.hash = "#/upload";
     vi.mocked(listJobs).mockResolvedValue([]);
     vi.mocked(getJob).mockResolvedValue(done);
     vi.mocked(uploadInvoice).mockReset();
@@ -151,12 +152,10 @@ describe("App", () => {
     await userEvent.upload(screen.getByLabelText(/drop an invoice pdf/i), pdf());
     expect(await screen.findByRole("alert")).toHaveTextContent("That job no longer exists.");
   });
-  it("lists recent jobs and opens one on click", async () => {
+  it("lists recent jobs and opens one in the detail route on click", async () => {
     vi.mocked(listJobs).mockResolvedValue([done]);
     render(<App />);
-    const item = await screen.findByRole("button", { name: /INV-001\.pdf/ });
-    await userEvent.click(item);
-    expect(await screen.findByText("Reconciled")).toBeInTheDocument();
-    expect(within(screen.getByRole("main")).getByRole("article")).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: /INV-001\.pdf/ }));
+    expect(window.location.hash).toBe(`#/invoices/${done.job_id}/document`);
   });
 });

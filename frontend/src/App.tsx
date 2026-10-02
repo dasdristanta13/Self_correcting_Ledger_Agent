@@ -1,66 +1,41 @@
-import { useCallback, useEffect, useState } from "react";
-import { ApiError, listJobs, uploadInvoice } from "./api/client";
-import type { Job } from "./api/types";
-import { DropZone } from "./components/DropZone";
-import { RecentJobs } from "./components/RecentJobs";
-import { ResultView } from "./components/ResultView";
-import { useJob } from "./hooks/useJob";
+import { useEffect, useRef, type ReactNode } from "react";
+import { Sidebar } from "./components/shell/Sidebar";
+import { JobsProvider } from "./hooks/useJobs";
+import { useRoute, type Route } from "./router";
+import { NotFoundView } from "./views/NotFoundView";
+import { UploadView } from "./views/UploadView";
 
-import { JOB_NOT_FOUND as NOT_FOUND } from "./hooks/useJob";
-
-export default function App() {
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [uploadPct, setUploadPct] = useState<number | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [recent, setRecent] = useState<Job[]>([]);
-  const { job, error: pollError } = useJob(jobId);
-
-  const refresh = useCallback(() => { listJobs().then(setRecent).catch(() => undefined); }, []);
-  useEffect(refresh, [refresh]);
-  useEffect(() => { if (job?.state === "DONE" || job?.state === "ERROR") refresh(); }, [job?.state, refresh]);
-
-  const working = job?.state === "QUEUED" || job?.state === "RUNNING";
-  const busy = uploadPct !== null || working;
-
-  async function handleFile(file: File) {
-    setUploadError(null);
-    setJobId(null);
-    setUploadPct(0);
-    try {
-      const r = await uploadInvoice(file, setUploadPct);
-      setJobId(r.job_id);
-    } catch (e) {
-      setUploadError(e instanceof ApiError ? e.message : "Upload failed. Check your connection and try again.");
-    } finally {
-      setUploadPct(null);
-    }
+function viewFor(route: Route): ReactNode {
+  switch (route.name) {
+    case "upload": return <UploadView />;
+    default: return <NotFoundView />;     // later tasks register their views here
   }
+}
+
+function Shell() {
+  const route = useRoute();
+  const mainRef = useRef<HTMLElement>(null);
+  const first = useRef(true);
+  const routeKey = route.name === "detail" ? `detail:${route.id}` : route.name;
+
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    const h1 = mainRef.current?.querySelector("h1");
+    if (h1) { h1.setAttribute("tabindex", "-1"); h1.focus({ preventScroll: true }); }
+    window.scrollTo(0, 0);
+  }, [routeKey]);
 
   return (
-    <main className="page">
-      <header className="masthead">
-        <h1>Ledger Agent</h1>
-        <p className="lede">Drop an invoice. Get a reconciled ledger and the evidence behind every correction.</p>
-      </header>
-      <DropZone onFile={handleFile} disabled={busy} />
-      <div className="activity">
-        {uploadPct !== null && (
-          <div role="status" className="progress">
-            <label>Uploading {uploadPct}% <progress max={100} value={uploadPct} /></label>
-          </div>
-        )}
-        {working && (
-          <div role="status" className="progress">
-            <p>Reconciling {job?.filename}. This usually takes a few seconds.</p>
-            <span className="working-bar" aria-hidden="true" />
-          </div>
-        )}
-        {uploadError && <p role="alert" className="field-error">{uploadError}</p>}
-        {pollError && !job && <p role="alert" className="field-error">{pollError === NOT_FOUND ? pollError : "Lost contact with the server. Retrying…"}</p>}
-        {pollError && job && working && <p role="status" className="muted">Reconnecting…</p>}
-      </div>
-      {job && <ResultView job={job} />}
-      <RecentJobs jobs={recent} selected={jobId} onSelect={setJobId} />
-    </main>
+    <div className="shell">
+      <a className="skip-link" href="#main" onClick={(e) => { e.preventDefault(); mainRef.current?.focus(); }}>Skip to content</a>
+      <Sidebar route={route} />
+      <main id="main" className="main" ref={mainRef} tabIndex={-1}>
+        <div className="view">{viewFor(route)}</div>
+      </main>
+    </div>
   );
+}
+
+export default function App() {
+  return <JobsProvider><Shell /></JobsProvider>;
 }
