@@ -70,3 +70,46 @@ def test_llm_incomplete_mapping_is_ignored():
     doc.tables[0].headers = ["Part", "Count", "Each", "Line Cost"]
     llm = FakeLLM([{"mapping": {"Part": "description"}}])
     assert resolve_column_overrides(doc, llm) == {}
+
+
+def _add_row(doc, table_idx, row, values):
+    from ledger_agent.models import TableCell
+    t = doc.tables[table_idx]
+    for c, v in enumerate(values):
+        t.cells.append(TableCell(value=v, row=row, column=c, bbox=[50 + 100 * c, 300 + 20 * row, 150 + 100 * c, 320 + 20 * row]))
+
+def test_non_item_rows_inside_table_are_skipped_and_chunks_stay_aligned():
+    from ledger_agent.retrieval.chunks import build_chunks
+    base = build_ledger(make_document())
+    doc = make_document()
+    _add_row(doc, 0, 3, ["Labor", "", "", ""])                      # section heading
+    _add_row(doc, 0, 4, ["(continued from above)", "", "", ""])     # wrapped description
+    _add_row(doc, 0, 5, ["", "", "Total", "1,044.00"])              # totals row
+    led = build_ledger(doc)
+    assert [(i.id, i.amount) for i in led.items] == [(i.id, i.amount) for i in base.items]
+    chunk_ids = [c.item_id for c in build_chunks(doc) if c.chunk_type == "line_item"]
+    assert chunk_ids == [i.id for i in led.items]
+
+def test_partially_numeric_row_still_fails():
+    doc = make_document()
+    _add_row(doc, 0, 3, ["Widget", "2", "5.00", "ten"])
+    with pytest.raises(ExtractionError, match="line_03"):
+        build_ledger(doc)
+
+def test_headerless_continuation_table_is_included():
+    from ledger_agent.models import DocumentTable, TableCell
+    doc = make_document()
+    first = doc.tables[0]
+    rows = [["Washer", "4", "2.50", "10.00"], ["Bolt", "2", "1.00", "2.00"]]
+    cells = [TableCell(value=v, row=r, column=c, bbox=[50 + 100 * c, 100 + 20 * r, 150 + 100 * c, 120 + 20 * r])
+             for r, row in enumerate(rows) for c, v in enumerate(row)]
+    doc.tables.append(DocumentTable(table_id="table_02", page=2, headers=rows[0], cells=cells,
+                                    bbox=[50, 100, 450, 160]))
+    from ledger_agent.retrieval.chunks import build_chunks
+    led = build_ledger(doc)
+    assert [i.id for i in led.items] == ["line_01", "line_02", "line_03", "line_04"]
+    assert [i.description for i in led.items[2:]] == ["Washer", "Bolt"]
+    assert led.items[2].source["amount"].row == 0 and led.items[2].source["amount"].table_id == "table_02"
+    assert [c.item_id for c in build_chunks(doc) if c.chunk_type == "line_item"] == [i.id for i in led.items]
+    # header-bearing continuation (repeated header) still works and is not double counted
+    assert len(first.rows()) == 2

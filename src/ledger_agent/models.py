@@ -46,10 +46,10 @@ class DocumentTable(BaseModel):
     bbox: list[float]
     low_quality: bool = False
 
-    def rows(self) -> dict[int, dict[int, TableCell]]:
+    def rows(self, min_row: int = 1) -> dict[int, dict[int, TableCell]]:
         out: dict[int, dict[int, TableCell]] = {}
         for c in self.cells:
-            if c.row >= 1:
+            if c.row >= min_row:
                 out.setdefault(c.row, {})[c.column] = c
         return dict(sorted(out.items()))
 
