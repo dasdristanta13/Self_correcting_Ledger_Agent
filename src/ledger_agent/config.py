@@ -21,4 +21,4 @@ class Config(BaseModel):
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "Config":
-        return cls(**(yaml.safe_load(Path(path).read_text()) or {}))
+        return cls(**(yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}))

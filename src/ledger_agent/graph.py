@@ -5,6 +5,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable
 
+from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel
 
@@ -149,12 +150,17 @@ def build_graph(deps: Deps):
     def _dispose(state):
         idx = state.get("retrieval_index")
         if idx is not None:
-            idx.dispose()
+            try:
+                idx.dispose()
+            except Exception:   # cleanup failure must never hide the run's result
+                pass
         return {"retrieval_index": None}
 
+    @_guarded("finalize")
     def finalize(state):
         return _dispose(state) | {"status": Status.RECONCILED}
 
+    @_guarded("failed")
     def failed(state):
         return _dispose(state)
 
@@ -188,7 +194,14 @@ def run_invoice(pdf_path: str, deps: Deps, invoice_id: str | None = None) -> Rec
                             "revision": 0}
     if invoice_id:
         initial["invoice_id"] = invoice_id
-    final = build_graph(deps).invoke(initial, {"recursion_limit": 100})
+    limit = 4 * deps.config.max_revisions + 30
+    try:
+        final = build_graph(deps).invoke(initial, {"recursion_limit": limit})
+    except GraphRecursionError as exc:
+        return ReconciliationResult(
+            invoice_id=invoice_id or Path(pdf_path).stem, status=Status.MAX_REVISIONS_EXCEEDED,
+            iterations=0, ledger=None, original_ledger=None, corrections=[], evidence=[],
+            error=f"graph recursion limit ({limit}) exceeded: {exc}")
     return ReconciliationResult(
         invoice_id=final.get("invoice_id", Path(pdf_path).stem), status=final["status"],
         iterations=final.get("revision", 0), ledger=final.get("ledger"),

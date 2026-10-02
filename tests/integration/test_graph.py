@@ -103,3 +103,36 @@ def test_short_trailing_page_does_not_fail_native_pdf(tmp_path):
     d.save(out); d.close()
     res = run_invoice(str(out), deps())
     assert res.status == Status.RECONCILED and res.error is None
+
+def test_dispose_failure_does_not_hide_result(tmp_path, monkeypatch):
+    import ledger_agent.graph as g
+    real = g.build_index
+
+    class Boom:
+        def __init__(self, inner): self._i = inner
+        def __getattr__(self, name): return getattr(self._i, name)
+        def dispose(self): raise RuntimeError("dispose exploded")
+
+    monkeypatch.setattr(g, "build_index", lambda doc, emb: Boom(real(doc, emb)))
+    pdf = render_invoice(default_spec(), tmp_path / "INV-001.pdf")
+    res = run_invoice(str(pdf), deps())
+    assert res.status == Status.RECONCILED
+    res2 = run_invoice(str(pdf), deps(ledger_builder=corrupting_builder("items[line_01].amount", D("1040.00")),
+                                      validator=scripted_validator([[L1]])))
+    assert res2.status == Status.NO_PROGRESS
+
+def test_recursion_limit_scales_and_overflow_is_a_clean_terminal_result(tmp_path, monkeypatch):
+    import ledger_agent.graph as g
+    from langgraph.errors import GraphRecursionError
+    seen = {}
+
+    class Stub:
+        def invoke(self, initial, config):
+            seen.update(config)
+            raise GraphRecursionError("too deep")
+
+    monkeypatch.setattr(g, "build_graph", lambda d: Stub())
+    res = run_invoice("x.pdf", deps(config=Config(max_revisions=10)))
+    assert seen["recursion_limit"] == 4 * 10 + 30
+    assert res.status == Status.MAX_REVISIONS_EXCEEDED and "recursion" in res.error.lower()
+    assert res.ledger is None
