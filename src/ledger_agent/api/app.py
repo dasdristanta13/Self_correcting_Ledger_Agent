@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
@@ -17,6 +18,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from ledger_agent.api.runner import run_job
 from ledger_agent.graph import Deps
 from ledger_agent.storage.base import Job, JobStore, new_job_id, utc_now
+
+
+logger = logging.getLogger(__name__)
 
 
 def invoice_id_from_filename(filename: str | None) -> str:
@@ -45,8 +49,6 @@ def create_app(store: JobStore, deps_factory: Callable[[str], Deps], *, max_uplo
             pool.shutdown(wait=False, cancel_futures=True)
 
     app = FastAPI(title="Self-Correcting Ledger Agent", lifespan=lifespan)
-    app.add_middleware(CORSMiddleware, allow_origins=list(cors_origins),
-                       allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"])
 
     @app.middleware("http")
     async def reject_oversize(request: Request, call_next):
@@ -58,6 +60,10 @@ def create_app(store: JobStore, deps_factory: Callable[[str], Deps], *, max_uplo
             if declared is not None and declared > max_bytes + slack:
                 return err(413, "too_large", f"File exceeds the {max_upload_mb:g} MB limit.")
         return await call_next(request)
+
+    # added after the size middleware so CORS is outermost and also decorates its 413
+    app.add_middleware(CORSMiddleware, allow_origins=list(cors_origins),
+                       allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["*"])
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(_request, _exc):
@@ -94,12 +100,13 @@ def create_app(store: JobStore, deps_factory: Callable[[str], Deps], *, max_uplo
             created = True
             pool.submit(run_job, store, deps_factory, job_id, path, invoice_id_from_filename(file.filename))
         except Exception:
+            logger.exception("could not queue upload for job %s", job_id)
             path.unlink(missing_ok=True)
             if created:
                 try:
                     store.update(job_id, state="ERROR", finished_at=utc_now(), error="could not be queued")
                 except Exception:
-                    pass
+                    logger.exception("could not mark job %s ERROR", job_id)
             return err(503, "unavailable", "The service could not queue this file. Try again.")
         return {"job_id": job_id, "status": "QUEUED"}
 

@@ -212,6 +212,35 @@ def test_stale_uploads_are_swept_at_startup(tmp_path):
 def test_malformed_request_uses_error_shape(tmp_path):
     c, _ = make_client(tmp_path)
     r = c.post("/api/invoices", content=b"{}", headers={"content-type": "multipart/form-data"})
-    assert r.status_code == 422 and r.json()["code"] in ("invalid_request", "missing_file")
+    assert r.status_code == 422 and r.json()["code"] == "invalid_request"
     r = c.get("/api/invoices?limit=abc")
     assert r.status_code == 422 and r.json()["code"] == "invalid_request"
+
+
+def test_queue_failure_is_logged(tmp_path, pdf_bytes, caplog):
+    c = TestClient(create_app(InMemoryJobStore(), plain_deps, upload_dir=tmp_path / "up",
+                              executor=BoomExecutor()))
+    with caplog.at_level("ERROR"):
+        assert upload(c, pdf_bytes).status_code == 503
+    assert any(r.levelname == "ERROR" and "pool is shut down" in (r.exc_text or r.getMessage())
+               or (r.exc_info and "pool is shut down" in str(r.exc_info[1])) for r in caplog.records)
+
+
+def test_failure_to_mark_job_error_is_logged(tmp_path, pdf_bytes, caplog):
+    class UpdateBoom(InMemoryJobStore):
+        def update(self, *a, **kw):
+            raise RuntimeError("update down")
+
+    c = TestClient(create_app(UpdateBoom(), plain_deps, upload_dir=tmp_path / "up", executor=BoomExecutor()))
+    with caplog.at_level("ERROR"):
+        assert upload(c, pdf_bytes).status_code == 503
+    assert any("could not mark job" in r.getMessage() for r in caplog.records)
+
+
+def test_early_413_carries_cors_headers(tmp_path):
+    c, _ = make_client(tmp_path, max_upload_mb=0.0001)
+    r = c.post("/api/invoices", content=b"x", headers={
+        "origin": "http://localhost:5173",
+        "content-type": "multipart/form-data; boundary=zzz", "content-length": str(5 * 1024 * 1024)})
+    assert r.status_code == 413
+    assert r.headers.get("access-control-allow-origin") == "http://localhost:5173"
