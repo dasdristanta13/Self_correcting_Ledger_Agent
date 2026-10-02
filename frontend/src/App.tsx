@@ -4,14 +4,18 @@ import { JobsProvider } from "./hooks/useJobs";
 import { useRoute, type Route } from "./router";
 import { DashboardView } from "./views/DashboardView";
 import { InvoicesView } from "./views/InvoicesView";
+import { AuditView } from "./views/AuditView";
 import { NotFoundView } from "./views/NotFoundView";
 import { UploadView } from "./views/UploadView";
+import { ReviewView } from "./views/ReviewView";
 
 function viewFor(route: Route): ReactNode {
   switch (route.name) {
     case "dashboard": return <DashboardView />;
     case "invoices": return <InvoicesView />;
     case "upload": return <UploadView />;
+    case "review": return <ReviewView />;
+    case "audit": return <AuditView />;
     default: return <NotFoundView />;     // later tasks register their views here
   }
 }

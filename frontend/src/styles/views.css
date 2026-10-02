@@ -51,3 +51,8 @@
 .pill-link { text-decoration: none; }
 .pad-top { padding-top: var(--s3); }
 .tabs + .dropzone-wrap, .tabs + div > .dropzone-wrap { margin-top: 0; }
+.cell-issue { max-width: 26rem; color: var(--muted); }
+.code-pill { padding: 2px var(--s2); border-radius: var(--radius-sm); background: var(--sunk); font-family: var(--mono); font-size: var(--text-xs); }
+.note { margin-top: var(--s3); font-size: var(--text-sm); }
+.field-inline { display: inline-flex; align-items: center; gap: var(--s2); color: var(--muted); font-size: var(--text-sm); }
+select { padding: var(--s2) var(--s3); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font: inherit; }
