@@ -4,23 +4,8 @@ Document-scoped, evidence-grounded invoice reconciliation. A proposer (an LLM, o
 
 ## Architecture
 
-```text
-Browser (React/Vite SPA, served from frontend/dist)
-   |  POST /api/invoices (PDF)  .  GET /api/invoices, /{id}, /{id}/trace  (polling)
-   v
-FastAPI  (api/app.py: validation, size/magic-byte checks, thread pool of 2)
-   |  run_job -> run_invoice
-   v
-LangGraph core:  Validate --PASS--> Finalize
-                    ^
-                    +--FAIL--> Audit (hybrid RAG) -> Reconcile --> back to Validate
-   |
-   v
-ChromaDB (PersistentClient in LEDGER_DATA_DIR/chroma)
-   - jobs collection    : one record per upload, with the JSON result
-   - events collection  : ordered trace events per job
-   - idx-<16 hex>       : per-invoice vectors, deleted on dispose, orphans swept at startup
-```
+![3-tier architecture: React SPA, FastAPI + LangGraph, ChromaDB](images/architecture.svg)
+
 
 ## Quick start (Windows / PowerShell)
 
