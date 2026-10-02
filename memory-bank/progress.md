@@ -10,14 +10,15 @@ Last updated: 2026-10-02
 - [x] Plan written: `docs/superpowers/plans/2026-10-02-ledger-agent-core.md` (12 tasks)
 - [x] Execution method chosen: subagent-driven-development (fresh implementer per task, controller review)
 - [x] Execute: all 12 tasks done on branch `feature/core-loop`
-- [ ] Whole-branch review by controller (pending), then merge decision
+- [x] Whole-branch review (opus) found 5 Important issues; one fix wave (6 commits, 92 tests) + scoped re-review: all addressed
+- [ ] Merge decision (user)
 
 ## Build waves (cycle 1)
 - [x] Wave 0 - scaffold + contracts (Task 1)
 - [x] Wave 1 - extraction, validation, retrieval, fixtures (Tasks 2-6)
 - [x] Wave 2 - agents, guards, graph, end-to-end scenarios (Tasks 7-11)
 - [x] Task 12 - close-out: fresh full run 81 passed, 0 failed, 0 skipped, 0 warnings (1.83s); DoD audit below; README added
-- [ ] Whole-branch review (controller) - pending
+- [x] Whole-branch review + fix wave complete (92 passed)
 
 ## Definition of Done audit (implementation-plan.md section 22)
 All tests cited were verified to exist (grep) and pass in the fresh 81-test run. [~] = partly covered.
@@ -54,4 +55,4 @@ Persistence (SQLite/PostgreSQL), observability/traces (Opik/LangSmith), No-RAG v
 - `.gitignore` has an unrelated uncommitted `docs/` line; intentionally not committed in Task 12.
 
 ## Open issues
-None known; whole-branch review pending.
+Parked for cycle 2 (final-review minors): label/amount in separate PDF text blocks, wider currency symbols, fuzzy header matching (e.g. 'Unit Price (USD)'), `low_quality` flag unused, mixed native/scanned document silently omits scanned pages (no warning recorded), headerless-continuation heuristic can ingest a same-width non-item table.
