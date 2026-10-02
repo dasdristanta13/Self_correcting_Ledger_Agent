@@ -65,6 +65,26 @@ All state lives under `LEDGER_DATA_DIR` (default `./data`): `chroma/` (jobs, eve
 
 Jobs left `QUEUED`/`RUNNING` by a crash become `ERROR` ("interrupted by restart") on the next start.
 
+## Frontend
+
+The UI is a React 18 + TypeScript SPA in `frontend/`, using hash routes so the API server can serve it as static files. It has six views:
+
+| Route | View |
+|---|---|
+| `#/` | Dashboard: summary strip, 14-day activity, status mix, recent activity |
+| `#/invoices` | Invoices: status tabs, search, table |
+| `#/upload` | Upload: single invoice or bulk (queue, then "Reconcile all") |
+| `#/review` | Needs review: invoices the agent stopped on, grouped by stop reason |
+| `#/invoices/<id>/document`, `/extracted`, `/reconciliation` | Invoice detail (reconciliation tab has the agent replay) |
+| `#/audit` | Audit trail across the most recent invoices |
+| `#/settings` | Settings: browser-only preview, stored in `localStorage` and not yet applied by the agent |
+
+Unknown routes show a not-found page. Light, dark and system themes are in the sidebar.
+
+```powershell
+cd frontend; npm run dev        # Vite on http://localhost:5173, proxies /api to :8787
+```
+
 ## Tests
 
 ```powershell
