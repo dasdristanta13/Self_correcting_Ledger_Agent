@@ -13,30 +13,41 @@ paths:
         "202": {description: accepted, content: {application/json: {schema: {$ref: "#/components/schemas/Accepted"}}}}
         "413": {description: file too large, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
         "415": {description: not a PDF, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
-        "422": {description: no file, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+        "422": {description: "no file (code missing_file) or malformed multipart body (code invalid_request)", content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+        "503": {description: "could not queue the upload (code unavailable); the job, if created, is marked ERROR", content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+        default: {description: "any other HTTP error (code not_found for 404, otherwise http_error)", content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
     get:
       summary: Recent jobs, newest first
       parameters: [{name: limit, in: query, schema: {type: integer, default: 50, maximum: 200}}]
-      responses: {"200": {description: ok, content: {application/json: {schema: {type: array, items: {$ref: "#/components/schemas/Job"}}}}}}
+      responses:
+        "200": {description: ok, content: {application/json: {schema: {type: array, items: {$ref: "#/components/schemas/Job"}}}}}
+        "422": {description: "bad query parameter, e.g. non-integer limit (code invalid_request)", content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
   /api/invoices/{job_id}:
     get:
       summary: One job
       parameters: [{name: job_id, in: path, required: true, schema: {type: string}}]
       responses:
         "200": {description: ok, content: {application/json: {schema: {$ref: "#/components/schemas/Job"}}}}
-        "404": {description: unknown job, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+        "404": {description: "unknown job (code not_found); any unknown path also returns 404 not_found", content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+        default: {description: "any other HTTP error (code http_error)", content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
   /api/invoices/{job_id}/trace:
     get:
       summary: Trace events of a job
       parameters: [{name: job_id, in: path, required: true, schema: {type: string}}]
       responses:
         "200": {description: ok, content: {application/json: {schema: {type: array, items: {$ref: "#/components/schemas/TraceEvent"}}}}}
-        "404": {description: unknown job, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+        "404": {description: "unknown job (code not_found); any unknown path also returns 404 not_found", content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+        default: {description: "any other HTTP error (code http_error)", content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
 components:
   schemas:
     Health: {type: object, required: [status, store], properties: {status: {type: string}, store: {type: string}}}
     Accepted: {type: object, required: [job_id, status], properties: {job_id: {type: string}, status: {type: string, enum: [QUEUED]}}}
-    Error: {type: object, required: [code, message], properties: {code: {type: string}, message: {type: string}}}
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string, description: "one of: missing_file, invalid_request, too_large, not_a_pdf, unavailable, not_found, http_error"}
+        message: {type: string}
     Job:
       type: object
       required: [job_id, filename, state, created_at]
