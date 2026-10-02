@@ -74,12 +74,11 @@ def test_two_invoices_use_separate_collections_and_never_leak(client):
 def test_sweep_removes_orphans_but_not_other_collections(client):
     client.get_or_create_collection("jobs", embedding_function=None)
     ChromaVectorIndex(client, "INV-X", [], EMB)          # empty -> creates nothing
-    orphan = build_index(make_document(), EMB, vector_factory=chroma_vector_factory(client))
+    build_index(make_document(), EMB, vector_factory=chroma_vector_factory(client))
     assert sweep_orphan_indexes(client) == 1
     assert list_index_collections(client) == []
     names = [getattr(c, "name", c) for c in client.list_collections()]
     assert "jobs" in names
-    del orphan
 
 
 def test_empty_corpus_and_zero_query_vector(client):
@@ -87,3 +86,64 @@ def test_empty_corpus_and_zero_query_vector(client):
     idx = build_index(make_document(), EMB, vector_factory=chroma_vector_factory(client))
     assert idx.search("INV-001", "", k=2, mode="vector") is not None   # empty query -> zero vector
     idx.dispose()
+
+
+class _RaisingEmbedder:
+    def embed(self, texts):
+        raise ValueError("boom")
+
+
+def test_failing_embedder_leaves_no_collection(client):
+    from ledger_agent.retrieval.chunks import build_chunks
+    with pytest.raises(ValueError):
+        ChromaVectorIndex(client, "INV-001", build_chunks(make_document()), _RaisingEmbedder())
+    assert list_index_collections(client) == []
+
+
+def test_failing_add_deletes_the_created_collection(client):
+    from ledger_agent.retrieval.chunks import build_chunks
+
+    class AddFails:
+        def __init__(self, col):
+            self._col = col
+            self.name = col.name
+
+        def add(self, **kw):
+            raise RuntimeError("chroma add failed")
+
+    class ClientWrapper:
+        def create_collection(self, *a, **kw):
+            return AddFails(client.create_collection(*a, **kw))
+
+        def delete_collection(self, name):
+            client.delete_collection(name)
+
+    with pytest.raises(RuntimeError):
+        ChromaVectorIndex(ClientWrapper(), "INV-001", build_chunks(make_document()), EMB)
+    assert list_index_collections(client) == []
+
+
+def test_scores_after_dispose_raises(client):
+    from ledger_agent.retrieval.chunks import build_chunks
+    idx = ChromaVectorIndex(client, "INV-001", build_chunks(make_document()), EMB)
+    idx.dispose()
+    with pytest.raises(RuntimeError, match="disposed"):
+        idx.scores("total")
+
+
+def test_sweep_counts_only_actual_deletions():
+    class Flaky:
+        def __init__(self):
+            self.deleted = []
+
+        def list_collections(self):
+            return ["idx-aaaaaaaaaaaaaaaa", "idx-bbbbbbbbbbbbbbbb", "other"]
+
+        def delete_collection(self, name):
+            if name.endswith("a" * 16):
+                raise RuntimeError("gone")
+            self.deleted.append(name)
+
+    c = Flaky()
+    assert sweep_orphan_indexes(c) == 1
+    assert c.deleted == ["idx-bbbbbbbbbbbbbbbb"]

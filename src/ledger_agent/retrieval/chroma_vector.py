@@ -20,9 +20,14 @@ def list_index_collections(client) -> list[str]:
 
 def sweep_orphan_indexes(client) -> int:
     orphans = list_index_collections(client)
+    deleted = 0
     for name in orphans:
-        client.delete_collection(name)
-    return len(orphans)
+        try:
+            client.delete_collection(name)
+            deleted += 1
+        except Exception:
+            pass
+    return deleted
 
 
 def _normalise(vectors: list[list[float]]) -> np.ndarray:
@@ -40,13 +45,23 @@ class ChromaVectorIndex:
         self._n = len(chunks)
         self._name: str | None = None
         self._col = None
+        self._disposed = False
         if not chunks:
             return
-        self._name = f"{_PREFIX}{uuid.uuid4().hex[:16]}"
-        self._col = self._create_collection(client, self._name, invoice_id)
+        # Embed first so a failing embedder never creates a collection.
         vectors = _normalise(embedder.embed([c.text for c in chunks]))
-        self._col.add(ids=[str(i) for i in range(len(chunks))], embeddings=vectors.tolist(),
-                      metadatas=[{"invoice_id": invoice_id, "chunk_id": c.chunk_id} for c in chunks])
+        name = f"{_PREFIX}{uuid.uuid4().hex[:16]}"
+        try:
+            col = self._create_collection(client, name, invoice_id)
+            col.add(ids=[str(i) for i in range(len(chunks))], embeddings=vectors.tolist(),
+                    metadatas=[{"invoice_id": invoice_id, "chunk_id": c.chunk_id} for c in chunks])
+        except BaseException:
+            try:
+                client.delete_collection(name)
+            except Exception:
+                pass                                # never created / already gone
+            raise
+        self._name, self._col = name, col
 
     @staticmethod
     def _create_collection(client, name, invoice_id):
@@ -59,6 +74,8 @@ class ChromaVectorIndex:
                                             metadata={"hnsw:space": "ip", "invoice_id": invoice_id})
 
     def scores(self, query: str) -> list[float]:
+        if self._disposed:
+            raise RuntimeError("index was disposed")
         if self._col is None:
             return []
         q = _normalise([self._embedder.embed([query])[0]])[0]
@@ -69,6 +86,7 @@ class ChromaVectorIndex:
         return out
 
     def dispose(self) -> None:
+        self._disposed = True
         if self._name is None:
             return
         name, self._name, self._col = self._name, None, None
