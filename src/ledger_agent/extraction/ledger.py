@@ -3,6 +3,7 @@ import re
 from decimal import Decimal
 
 from ledger_agent.columns import REQUIRED, column_map, inside_any_table, iter_line_item_rows
+from ledger_agent.extraction.summary import summary_entries
 from ledger_agent.models import Document, Ledger, LineItem, Provenance, TaxLine
 from ledger_agent.money import parse_money
 from ledger_agent.protocols import LLMClient
@@ -56,7 +57,7 @@ def build_ledger(doc: Document) -> Ledger:
     scalars: dict[str, Decimal] = {}
     sources: dict[str, Provenance] = {}
     tax_lines: list[TaxLine] = []
-    currency = "USD"
+    currency: str | None = None
     for block in sorted(doc.text_blocks, key=lambda b: (b.page, b.bbox[1], b.bbox[0])):
         if inside_any_table(doc, block):
             continue
@@ -74,10 +75,21 @@ def build_ledger(doc: Document) -> Ledger:
             elif la.field not in scalars:
                 scalars[la.field] = la.amount
                 sources[la.field] = src
+    text_tax = bool(tax_lines)
+    for e in summary_entries(doc):
+        currency = currency or e.currency
+        src = e.provenance(inv)
+        if e.field == "tax":
+            if not text_tax:
+                tax_lines.append(TaxLine(id=f"tax_{len(tax_lines) + 1:02d}", rate=e.rate,
+                                         amount=e.amount, source={"amount": src}))
+        elif e.field not in scalars:
+            scalars[e.field] = e.amount
+            sources[e.field] = src
     if "total" not in scalars:
         raise ExtractionError("no grand total found")
     tax = sum((t.amount for t in tax_lines), Decimal("0")) if tax_lines else None
-    return Ledger(invoice_id=inv, currency=currency, items=items, subtotal=scalars.get("subtotal"),
+    return Ledger(invoice_id=inv, currency=currency or "USD", items=items, subtotal=scalars.get("subtotal"),
                   discount=scalars.get("discount"), tax=tax, tax_lines=tax_lines,
                   shipping=scalars.get("shipping"), fees=scalars.get("fees"),
                   total=scalars["total"], sources=sources)

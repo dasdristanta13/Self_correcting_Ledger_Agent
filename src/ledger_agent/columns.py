@@ -8,8 +8,8 @@ REQUIRED = frozenset({"description", "quantity", "unit_price", "amount"})
 _SYNONYMS = {
     "description": {"description", "item", "product", "details", "name"},
     "quantity": {"qty", "quantity", "units"},
-    "unit_price": {"unit price", "price", "rate", "unit cost"},
-    "amount": {"amount", "total", "line total", "ext", "extended"},
+    "unit_price": {"unit price", "price", "rate", "unit cost", "net price"},
+    "amount": {"amount", "total", "line total", "ext", "extended", "net worth"},
 }
 
 

@@ -7,7 +7,7 @@ from ledger_agent.fakes import FakeLLM
 from ledger_agent.ingestion.pdf import ingest_pdf
 from ledger_agent.ingestion.tables import extract_tables
 from ledger_agent.testing.invoices import InvoiceSpec, ItemSpec, default_spec, many_items_spec, render_invoice
-from ledger_agent.testing.ledgers import make_document, make_ledger
+from ledger_agent.testing.ledgers import make_document, make_ledger, make_net_worth_document
 from ledger_agent.validation.arithmetic import validate
 
 def doc_from(spec, tmp_path):
@@ -113,3 +113,18 @@ def test_headerless_continuation_table_is_included():
     assert [c.item_id for c in build_chunks(doc) if c.chunk_type == "line_item"] == [i.id for i in led.items]
     # header-bearing continuation (repeated header) still works and is not double counted
     assert len(first.rows()) == 2
+
+
+def test_net_worth_layout_builds_a_validating_ledger():
+    led = build_ledger(make_net_worth_document())
+    assert led.currency == "INR"
+    assert [(i.quantity, i.unit_price, i.amount) for i in led.items] == [(D("3.00"), D("83989.00"), D("251967.00"))]
+    assert (led.subtotal, led.tax, led.total) == (D("251967.00"), D("25196.70"), D("277163.70"))
+    assert led.tax_lines[0].rate == D("0.10")
+    assert (led.sources["total"].table_id, led.sources["total"].column) == ("table_02", "Gross Worth")
+    assert validate(led, ValidationRules()) == []
+
+
+def test_net_worth_layout_without_total_row_is_an_extraction_error():
+    with pytest.raises(ExtractionError, match="grand total"):
+        build_ledger(make_net_worth_document(total_row=False))

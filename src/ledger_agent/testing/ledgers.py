@@ -64,3 +64,21 @@ def make_document(items=None, discount=None, tax_rates=(Decimal("0.10"),), shipp
               for n, t in enumerate(lines)]
     page = DocumentPage(page_number=1, text="\n".join(lines))
     return Document(document_id=invoice_id, pages=[page], tables=[table], text_blocks=blocks)
+
+
+def make_net_worth_document(total_row: bool = True) -> Document:
+    items_h = ["No.", "Description", "Qty", "UM", "Net Price", "Net Worth", "VAT %", "Gross Worth"]
+    items_r = ["1.", "Vivo X100 Pro", "3.00", "pcs", "83,989.00", "251,967.00", "10%", "277,163.70"]
+    sum_h = ["", "VAT %", "Net Worth", "VAT", "Gross Worth"]
+    sum_rows = [["", "10%", "251,967.00", "25,196.70", "277,163.70"]]
+    if total_row:
+        sum_rows.append(["Total", "", "INR 251,967.00", "INR 25,196.70", "INR 277,163.70"])
+
+    def table(tid, headers, rows, y):
+        cells = [TableCell(value=h, row=0, column=c, bbox=[c * 10, y, c * 10 + 10, y + 5]) for c, h in enumerate(headers)]
+        for r, row in enumerate(rows, start=1):
+            cells += [TableCell(value=v, row=r, column=c, bbox=[c * 10, y + 6 * r, c * 10 + 10, y + 6 * r + 5]) for c, v in enumerate(row)]
+        return DocumentTable(table_id=tid, page=1, headers=headers, cells=cells, bbox=[0, y, 80, y + 6 * (len(rows) + 1)])
+    return Document(document_id="inv", pages=[DocumentPage(page_number=1, text="")],
+                    tables=[table("table_01", items_h, [items_r], 0), table("table_02", sum_h, sum_rows, 100)],
+                    text_blocks=[])
