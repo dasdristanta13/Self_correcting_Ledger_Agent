@@ -24,7 +24,7 @@ def test_build_app_from_env_reads_environment(tmp_path, monkeypatch):
     assert (tmp_path / "envdata" / "chroma").is_dir()
 
 
-def test_deps_factory_makes_fresh_deps_with_job_bound_sink(tmp_path):
+def test_deps_factory_makes_fresh_deps_with_job_bound_sink(tmp_path, monkeypatch):
     from ledger_agent.api import main as m
 
     seen = []
@@ -34,11 +34,8 @@ def test_deps_factory_makes_fresh_deps_with_job_bound_sink(tmp_path):
         seen.append(deps_factory)
         return real(store, deps_factory, **kw)
 
-    m.create_app = spy
-    try:
-        m.build_app(tmp_path / "data")
-    finally:
-        m.create_app = real
+    monkeypatch.setattr(m, "create_app", spy)
+    m.build_app(tmp_path / "data")
     a, b = seen[0]("job-a"), seen[0]("job-b")
     assert a is not b and a.trace_sink is not b.trace_sink
     assert a.vector_factory is b.vector_factory          # one shared Chroma client
