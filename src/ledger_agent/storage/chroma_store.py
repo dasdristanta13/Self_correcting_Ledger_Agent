@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import threading
+import time
+import uuid
 from pathlib import Path
 
 import chromadb
@@ -9,6 +11,17 @@ import chromadb
 from ledger_agent.storage.base import Job, utc_now
 
 _ZERO = [0.0]
+
+_clock_lock = threading.Lock()
+_last_ts = 0
+
+
+def _next_ts() -> int:
+    """Process-wide strictly increasing nanosecond clock (orders events across store instances)."""
+    global _last_ts
+    with _clock_lock:
+        _last_ts = max(time.time_ns(), _last_ts + 1)
+        return _last_ts
 
 
 class ChromaJobStore:
@@ -55,16 +68,17 @@ class ChromaJobStore:
         if not events:
             return
         with self._lock:
-            start = len(self._events.get(where={"job_id": job_id}, include=[])["ids"])
+            ts = _next_ts()
             self._events.upsert(
-                ids=[f"{job_id}:{start + i:08d}" for i in range(len(events))],
+                ids=[f"{job_id}:{ts:020d}:{i:04d}:{uuid.uuid4().hex[:8]}" for i in range(len(events))],
                 embeddings=[_ZERO] * len(events),
+                # default=str: non-JSON values are stringified rather than rejected
                 documents=[json.dumps(e, default=str) for e in events],
-                metadatas=[{"job_id": job_id, "seq": start + i} for i in range(len(events))])
+                metadatas=[{"job_id": job_id, "ts": ts, "i": i} for i in range(len(events))])
 
     def get_events(self, job_id: str) -> list[dict]:
         got = self._events.get(where={"job_id": job_id}, include=["documents", "metadatas"])
-        pairs = sorted(zip(got["metadatas"], got["documents"]), key=lambda p: p[0]["seq"])
+        pairs = sorted(zip(got["metadatas"], got["documents"]), key=lambda p: (p[0]["ts"], p[0]["i"]))
         return [json.loads(doc) for _meta, doc in pairs]
 
     def mark_interrupted(self) -> int:

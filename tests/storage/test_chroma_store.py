@@ -42,3 +42,27 @@ def test_chroma_store_is_thread_safe_for_concurrent_appends(tmp_path):
     with ThreadPoolExecutor(max_workers=4) as pool:
         list(pool.map(lambda i: store.append_events("a", [{"n": i}]), range(20)))
     assert sorted(e["n"] for e in store.get_events("a")) == list(range(20))
+
+
+def test_two_store_instances_on_one_client_lose_no_events():
+    from concurrent.futures import ThreadPoolExecutor
+
+    client = chromadb.EphemeralClient()
+    for name in ("jobs", "events"):
+        try:
+            client.delete_collection(name)
+        except Exception:
+            pass
+    stores = [ChromaJobStore(client), ChromaJobStore(client)]
+    stores[0].create(make_job("a", "2026-01-01T00:00:00.000+00:00"))
+
+    def run(tag):
+        for n in range(15):
+            stores[tag].append_events("a", [{"tag": tag, "n": n}])
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(run, [0, 1]))
+    events = stores[1].get_events("a")
+    assert len(events) == 30
+    for tag in (0, 1):
+        assert [e["n"] for e in events if e["tag"] == tag] == list(range(15))
