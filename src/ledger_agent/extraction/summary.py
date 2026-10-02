@@ -2,6 +2,7 @@ import re
 from dataclasses import dataclass
 from decimal import Decimal
 
+from ledger_agent.columns import REQUIRED, column_map
 from ledger_agent.models import Document, DocumentTable, Provenance, TableCell
 from ledger_agent.money import parse_money
 
@@ -11,7 +12,7 @@ _ROLES = {
     "tax": {"vat", "tax", "gst"},
     "gross": {"gross worth", "gross amount"},
 }
-_TOTAL_LABEL = re.compile(r"^(grand\s+)?total$", re.I)
+_TOTAL_LABEL = re.compile(r"^(grand\s+)?total\s*:?$", re.I)
 _RATE = re.compile(r"^(\d+(?:\.\d+)?)\s*%$")
 _CCY = re.compile(r"^([A-Z]{3})\b")
 
@@ -55,30 +56,42 @@ def _entry(field, cell, rate, table, row) -> SummaryEntry | None:
 
 
 def summary_entries(doc: Document) -> list[SummaryEntry]:
-    out: list[SummaryEntry] = []
+    summaries: list[tuple[DocumentTable, dict[str, int]]] = []
+    items: list[tuple[DocumentTable, dict[str, int]]] = []
     for table in sorted(doc.tables, key=lambda t: (t.page, t.table_id)):
         cols = _role_columns(table.headers)
         if not {"rate", "net", "tax", "gross"} <= cols.keys():
             continue
-        rows = table.rows(1)
-        rate_rows = [(r, cells, _RATE.match(cells[cols["rate"]].value.strip()))
-                     for r, cells in rows.items()
-                     if cols["rate"] in cells and not cells.get(0, TableCell(value="", row=r, column=0, bbox=[0, 0, 0, 0])).value.strip()]
-        rate_rows = [(r, cells, m) for r, cells, m in rate_rows if m]
-        for r, cells, m in rate_rows:
-            rate = Decimal(m.group(1)) / 100 if len(rate_rows) == 1 else None
-            e = _entry("tax", cells.get(cols["tax"]), rate, table, r)
+        # a per-line table (also has description/qty/unit price) is not a summary
+        (items if REQUIRED <= column_map(table.headers).keys() else summaries).append((table, cols))
+    chosen = summaries[-1:] or items[-1:]
+    out: list[SummaryEntry] = []
+    for table, cols in chosen:
+        out.extend(_table_entries(table, cols))
+    return out
+
+
+def _table_entries(table: DocumentTable, cols: dict[str, int]) -> list[SummaryEntry]:
+    out: list[SummaryEntry] = []
+    rows = table.rows(1)
+    rate_rows = [(r, cells, _RATE.match(cells[cols["rate"]].value.strip()))
+                 for r, cells in rows.items()
+                 if cols["rate"] in cells and not cells.get(0, TableCell(value="", row=r, column=0, bbox=[0, 0, 0, 0])).value.strip()]
+    rate_rows = [(r, cells, m) for r, cells, m in rate_rows if m]
+    for r, cells, m in rate_rows:
+        rate = Decimal(m.group(1)) / 100 if len(rate_rows) == 1 else None
+        e = _entry("tax", cells.get(cols["tax"]), rate, table, r)
+        if e:
+            out.append(e)
+    for r, cells in rows.items():
+        if not _TOTAL_LABEL.match(cells[0].value.strip() if 0 in cells else ""):
+            continue
+        for field, role in (("subtotal", "net"), ("total", "gross")):
+            e = _entry(field, cells.get(cols[role]), None, table, r)
             if e:
                 out.append(e)
-        for r, cells in rows.items():
-            if not _TOTAL_LABEL.match(cells[0].value.strip() if 0 in cells else ""):
-                continue
-            for field, role in (("subtotal", "net"), ("total", "gross")):
-                e = _entry(field, cells.get(cols[role]), None, table, r)
-                if e:
-                    out.append(e)
-            if not rate_rows:
-                e = _entry("tax", cells.get(cols["tax"]), None, table, r)
-                if e:
-                    out.append(e)
+        if not rate_rows:
+            e = _entry("tax", cells.get(cols["tax"]), None, table, r)
+            if e:
+                out.append(e)
     return out

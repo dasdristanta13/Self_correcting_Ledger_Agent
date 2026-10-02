@@ -55,3 +55,56 @@ def test_line_item_table_is_not_a_summary():
     cells = [TableCell(value=h, row=0, column=c, bbox=[0, 0, 1, 1]) for c, h in enumerate(headers)]
     t = DocumentTable(table_id="table_01", page=1, headers=headers, cells=cells, bbox=[0, 0, 5, 5])
     assert summary_entries(Document(document_id="X", pages=[], tables=[t], text_blocks=[])) == []
+
+
+def _table(tid, headers, rows, page=1):
+    cells = [TableCell(value=h, row=0, column=c, bbox=[0, 0, 1, 1]) for c, h in enumerate(headers)]
+    for r, row in enumerate(rows, start=1):
+        cells += [TableCell(value=v, row=r, column=c, bbox=[c, r, c + 1, r + 1]) for c, v in enumerate(row)]
+    return DocumentTable(table_id=tid, page=page, headers=headers, cells=cells, bbox=[0, 0, 5, 5])
+
+
+_ITEM_H = ["No.", "Description", "Qty", "Net Price", "Net Worth", "VAT %", "VAT", "Gross Worth"]
+_ITEM_ROWS = [["1.", "Widget", "2", "100.00", "200.00", "10%", "20.00", "220.00"],
+              ["Total", "", "", "", "200.00", "", "20.00", "220.00"]]
+_SUM_H = ["", "VAT %", "Net Worth", "VAT", "Gross Worth"]
+_SUM_ROWS = [["", "10%", "200.00", "20.00", "220.00"], ["Total", "", "200.00", "20.00", "220.00"]]
+
+
+def _two_table_doc(item_rows=_ITEM_ROWS):
+    return Document(document_id="X", pages=[DocumentPage(page_number=1, text="")], text_blocks=[],
+                    tables=[_table("table_01", _ITEM_H, item_rows), _table("table_02", _SUM_H, _SUM_ROWS)])
+
+
+def test_per_line_vat_item_table_is_skipped_when_a_summary_table_exists():
+    es = summary_entries(_two_table_doc())
+    assert sorted((e.field, e.table.table_id) for e in es) == [
+        ("subtotal", "table_02"), ("tax", "table_02"), ("total", "table_02")]
+
+
+def test_build_ledger_counts_tax_once_with_per_line_vat_item_table():
+    from ledger_agent.extraction.ledger import build_ledger
+    from ledger_agent.config import ValidationRules
+    from ledger_agent.validation.arithmetic import validate
+    led = build_ledger(_two_table_doc())
+    assert len(led.tax_lines) == 1 and led.tax_lines[0].amount == D("20.00")
+    assert validate(led, ValidationRules()) == []
+
+
+def test_item_table_total_row_is_the_fallback_when_no_summary_table():
+    doc = Document(document_id="X", pages=[DocumentPage(page_number=1, text="")], text_blocks=[],
+                   tables=[_table("table_01", _ITEM_H, _ITEM_ROWS)])
+    got = {e.field: (e.amount, e.table.table_id) for e in summary_entries(doc)}
+    assert got == {"subtotal": (D("200.00"), "table_01"), "total": (D("220.00"), "table_01"),
+                   "tax": (D("20.00"), "table_01")}
+
+
+def test_only_the_last_summary_table_is_used():
+    doc = Document(document_id="X", pages=[DocumentPage(page_number=1, text="")], text_blocks=[],
+                   tables=[_table("table_01", _SUM_H, _SUM_ROWS), _table("table_02", _SUM_H, _SUM_ROWS)])
+    assert {e.table.table_id for e in summary_entries(doc)} == {"table_02"}
+
+
+def test_total_label_with_colon():
+    es = summary_entries(_doc([["Total:", "", "100.00", "10.00", "110.00"]]))
+    assert _by_field(es)[("total", None)].amount == D("110.00")

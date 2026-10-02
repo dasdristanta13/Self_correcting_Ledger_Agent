@@ -48,8 +48,11 @@ def build_chunks(doc: Document) -> list[Chunk]:
                 text=f"Invoice {inv} | Page {block.page} | {item_id or la.field} | {line.strip()}",
                 page=block.page, item_id=item_id, field=la.field,
                 values={"amount": str(la.amount)}, provenance=prov))
+    text_fields = {c.field for c in chunks if c.field and c.field != "tax"}
     for e in summary_entries(doc):
         item_id = None
+        if e.field != "tax" and e.field in text_fields:   # text value wins, as in build_ledger
+            continue
         if e.field == "tax":
             if tax_n:                       # labeled text tax lines win, as in build_ledger
                 continue

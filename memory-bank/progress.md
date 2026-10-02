@@ -61,7 +61,10 @@ Remaining gaps: real scanned-OCR backend, real-LLM adapter and embedder (offline
 
 ## Open issues
 Parked for cycle 2 (final-review minors): label/amount in separate PDF text blocks, wider currency symbols, fuzzy header matching (e.g. 'Unit Price (USD)'), `low_quality` flag unused, mixed native/scanned document silently omits scanned pages (no warning recorded), headerless-continuation heuristic can ingest a same-width non-item table.
-Summary tables (Net Worth/VAT/Gross Worth) supported; multi-rate summaries drop per-rate checking.
+
+- Summary tables (Net Worth/VAT/Gross Worth) supported; multi-rate summaries drop per-rate checking.
+
+- Currency suffixes/symbols other than a 3-letter prefix (e.g. '220.00 INR', 'Rs. 220.00' - parse_money raises on 'Rs.') are not handled in summary tables; rate row with blank VAT cell drops tax; summary labels outside column 0 unsupported.
 
 
 ## UI / API / persistence cycle (branch `feature/ui-api-persistence`)
