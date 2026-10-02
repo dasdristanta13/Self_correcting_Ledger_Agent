@@ -114,3 +114,29 @@ def test_verifier_ties_scalar_evidence_to_recorded_block():
     other = good.model_copy(update={"block_id": "p1_b99"})
     assert verify_evidence(ev, d, cand.retrieved, "INV-001", 0.90, ledger.model_copy(update={"sources": {"total": good}})) is None
     assert "source" in verify_evidence(ev, d, cand.retrieved, "INV-001", 0.90, ledger.model_copy(update={"sources": {"total": other}}))
+
+
+def test_summary_cell_evidence_must_match_the_ledger_recorded_cell():
+    from decimal import Decimal as D
+    from ledger_agent.agents.audit import ChunkValueProposer, verify_evidence
+    from ledger_agent.extraction.ledger import build_ledger
+    from ledger_agent.models import Discrepancy, ScoredChunk
+    from ledger_agent.retrieval.chunks import build_chunks
+    from ledger_agent.testing.ledgers import make_net_worth_document
+    doc = make_net_worth_document()
+    ledger = build_ledger(doc).model_copy(update={"total": D("1.00")})
+    d = Discrepancy(field="total", expected=D("277163.70"), observed=D("1.00"),
+                    difference=D("-277162.70"), rule="grand_total", related_fields=["total"])
+    chunks = build_chunks(doc)
+    chunks.sort(key=lambda c: c.field != "total")      # retrieval ranks the target first
+    scored = [ScoredChunk(chunk=c, score=1.0) for c in chunks]
+    ev = ChunkValueProposer().propose(d, scored)[0]
+    assert ev.value == D("277163.70")
+    assert verify_evidence(ev, d, scored, "inv", 0.90, ledger) is None
+    subtotal_chunk = next(s for s in scored if s.chunk.field == "subtotal")
+    wrong = ev.model_copy(update={"chunk_id": subtotal_chunk.chunk.chunk_id})
+    assert verify_evidence(wrong, d, scored, "inv", 0.90, ledger) is not None
+    # same chunk, but the ledger recorded a different cell: provenance comparison must reject it
+    other_cell = next(s.chunk for s in scored if s.chunk.field == "subtotal").provenance
+    moved = ledger.model_copy(update={"sources": {"total": other_cell}})
+    assert "recorded source" in verify_evidence(ev, d, scored, "inv", 0.90, moved)

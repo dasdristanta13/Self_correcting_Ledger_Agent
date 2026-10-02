@@ -1,4 +1,5 @@
 from ledger_agent.columns import inside_any_table, iter_line_item_rows
+from ledger_agent.extraction.summary import summary_entries
 from ledger_agent.models import Chunk, Document, Provenance
 from ledger_agent.textparse import parse_labeled_line
 
@@ -47,4 +48,16 @@ def build_chunks(doc: Document) -> list[Chunk]:
                 text=f"Invoice {inv} | Page {block.page} | {item_id or la.field} | {line.strip()}",
                 page=block.page, item_id=item_id, field=la.field,
                 values={"amount": str(la.amount)}, provenance=prov))
+    for e in summary_entries(doc):
+        item_id = None
+        if e.field == "tax":
+            if tax_n:                       # labeled text tax lines win, as in build_ledger
+                continue
+            item_id = f"tax_{sum(1 for c in chunks if c.chunk_type == 'tax') + 1:02d}"
+        chunks.append(Chunk(
+            chunk_id=f"{inv}:{e.table.table_id}:r{e.row}c{e.cell.column}", invoice_id=inv,
+            chunk_type=_TYPE[e.field], page=e.table.page, table_id=e.table.table_id, row_id=e.row,
+            item_id=item_id, field=e.field, values={"amount": str(e.amount)},
+            text=f"Invoice {inv} | Page {e.table.page} | {item_id or e.field} | {e.header}: {e.cell.value}",
+            provenance=e.provenance(inv)))
     return chunks

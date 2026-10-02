@@ -54,3 +54,15 @@ def test_dispose():
     idx.dispose()
     with pytest.raises(IndexDisposedError):
         idx.search("INV-001", "total")
+
+
+def test_summary_cells_become_chunks_with_table_provenance():
+    from ledger_agent.retrieval.chunks import build_chunks
+    from ledger_agent.testing.ledgers import make_net_worth_document
+    chunks = build_chunks(make_net_worth_document())
+    by_field = {c.field: c for c in chunks if c.field}
+    assert by_field["total"].values == {"amount": "277163.70"} and by_field["total"].chunk_type == "totals"
+    assert (by_field["total"].table_id, by_field["total"].row_id) == ("table_02", 2)
+    assert by_field["total"].provenance.column == "Gross Worth"
+    tax = next(c for c in chunks if c.chunk_type == "tax")
+    assert tax.item_id == "tax_01" and tax.values == {"amount": "25196.70"}

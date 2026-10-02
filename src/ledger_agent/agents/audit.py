@@ -128,7 +128,9 @@ def _matches_ledger_source(ledger: Ledger, ref: PathRef, chunk: Chunk) -> bool:
         return True
     if ref.kind == "item":
         return (rec.page, rec.table_id, rec.row) == (chunk.page, chunk.table_id, chunk.row_id)
-    return (rec.page, rec.block_id) == (chunk.page, chunk.provenance.block_id)
+    p = chunk.provenance
+    return (rec.page, rec.block_id, rec.table_id, rec.row, rec.column) == (
+        chunk.page, p.block_id, p.table_id, p.row, p.column)
 
 
 def verify_evidence(ev: Evidence, discrepancy: Discrepancy, chunks: list[ScoredChunk],
