@@ -3,6 +3,7 @@ import { Sidebar } from "./components/shell/Sidebar";
 import { JobsProvider } from "./hooks/useJobs";
 import { useRoute, type Route } from "./router";
 import { DashboardView } from "./views/DashboardView";
+import { InvoiceDetailView } from "./views/InvoiceDetailView";
 import { InvoicesView } from "./views/InvoicesView";
 import { AuditView } from "./views/AuditView";
 import { NotFoundView } from "./views/NotFoundView";
@@ -16,6 +17,7 @@ function viewFor(route: Route): ReactNode {
     case "upload": return <UploadView />;
     case "review": return <ReviewView />;
     case "audit": return <AuditView />;
+    case "detail": return <InvoiceDetailView key={route.id} id={route.id} tab={route.tab} />;
     default: return <NotFoundView />;     // later tasks register their views here
   }
 }

@@ -1,7 +1,8 @@
 import type { Job } from "../api/types";
-import { fieldLabel, formatMoney, provenanceLabel } from "../lib/format";
+import { detailHref } from "../router";
 import { Corrections } from "./Corrections";
 import { Disclosure } from "./Disclosure";
+import { EvidenceList } from "./EvidenceList";
 import { LedgerTable } from "./LedgerTable";
 import { StatusBadge } from "./StatusBadge";
 import { Trace } from "./Trace";
@@ -32,6 +33,7 @@ export function ResultView({ job }: { job: Job }) {
         )}
       </header>
       <StatusBadge status={r.status} />
+      <p><a href={detailHref(job.job_id)}>Open full detail →</a></p>
       {r.error && <p className="muted">{r.error}</p>}
       {r.ledger && <LedgerTable ledger={r.ledger} corrections={r.corrections} />}
       {/* Without a ledger (FAILED) "No corrections were needed" would mislead, so omit the section. */}
@@ -43,17 +45,7 @@ export function ResultView({ job }: { job: Job }) {
       )}
       <div className="disclosures">
         <Disclosure title={`Evidence (${r.evidence.length})`}>
-          {r.evidence.length === 0 ? <p className="muted">No evidence was retrieved for this invoice.</p> : (
-            <ul className="evidence">
-              {r.evidence.map((e, i) => (
-                <li key={i}>
-                  <p><strong>{fieldLabel(e.field)}</strong> <span className="money">{formatMoney(e.value)}</span></p>
-                  <p className="muted">{provenanceLabel(e.source.page, e.source.table_id ?? null, e.source.row ?? null)}</p>
-                  <pre>{e.quote}</pre>
-                </li>
-              ))}
-            </ul>
-          )}
+          <EvidenceList items={r.evidence} />
         </Disclosure>
         <Disclosure title="Trace"><Trace jobId={job.job_id} /></Disclosure>
       </div>
