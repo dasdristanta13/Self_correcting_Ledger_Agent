@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ledger — Self-Correction Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--tx:#171b3d;--mu:#6f7599;--ac:#4549e0;--ac2:#eef0ff;--ln:rgba(90,100,170,.13);--ok:#13a458;--okb:#e2f6ea;--wn:#e8890c;--wnb:#fff0db;--er:#e5384b;--erb:#fdeaed;--g:rgba(255,255,255,.66);--g2:rgba(255,255,255,.88);--bd:rgba(255,255,255,.95);--sh:0 8px 32px rgba(80,90,170,.1);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;margin:0}
+body{font-family:Inter,system-ui,sans-serif;color:var(--tx);font-size:12.5px;min-height:100vh;background:#e8ecff radial-gradient(55% 45% at 8% 0,#dfe6ff,transparent),radial-gradient(45% 40% at 100% 10%,#ece4ff,transparent),radial-gradient(60% 45% at 40% 105%,#d9ebff,transparent);background-attachment:fixed;padding:18px}
+.win{max-width:1480px;margin:auto;border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(247,248,255,.6));border:1px solid var(--bd);box-shadow:0 20px 60px rgba(80,90,170,.16);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);overflow:hidden}
+.bar{height:34px;display:flex;align-items:center;gap:7px;padding:0 16px}.bar i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.bar i:nth-child(2){background:#febc2e}.bar i:nth-child(3){background:#28c840}
+.app{display:grid;grid-template-columns:200px 1fr;min-height:calc(100vh - 90px)}
+.side{padding:8px 12px 16px;border-right:1px solid var(--ln);display:flex;flex-direction:column;gap:3px}
+.logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:17px;padding:6px 8px 20px}.logo b{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7478ff,#3a3ed6);color:#fff;display:grid;place-items:center;font-size:14px}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:10px;color:var(--mu);font:inherit;font-weight:500;border:0;background:none;cursor:pointer;text-align:left;width:100%}
+.nav:hover{background:var(--ac2)}.nav.on{background:#e4e8ff;color:var(--ac)}.nav em{margin-left:auto;font-style:normal;background:var(--erb);color:var(--er);border-radius:99px;padding:1px 7px;font-size:11px;font-weight:600}
+.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.agent{margin-top:auto;padding:12px;border-radius:12px;background:var(--g2);border:1px solid var(--bd);display:flex;gap:9px;font-size:11.5px;color:var(--mu)}.agent b{display:block;color:var(--tx)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);margin-top:4px;box-shadow:0 0 0 4px rgba(19,164,88,.15);flex:none}
+main{padding:6px 22px 24px;min-width:0}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.search{flex:1;display:flex;gap:8px;align-items:center;padding:9px 13px;border-radius:11px;background:var(--g2);border:1px solid var(--bd);color:var(--mu)}.search input{border:0;outline:0;background:none;font:inherit;width:100%;color:var(--tx)}
+.av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6f73ff,#a58bff);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:600}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:24px;letter-spacing:-.02em;display:flex;gap:10px;align-items:center}h2{font-size:14px;font-weight:600}.sub{color:var(--mu);margin-top:4px}
+.btn{display:inline-flex;gap:7px;align-items:center;padding:8px 14px;border-radius:10px;border:1px solid var(--bd);background:var(--g2);font:inherit;font-weight:500;color:var(--tx);cursor:pointer;box-shadow:0 1px 6px rgba(80,90,170,.08)}.btn:hover{background:#fff}
+.btn.p{background:linear-gradient(135deg,#5b5fee,#3c40d8);color:#fff;border:0;box-shadow:0 6px 16px rgba(69,73,224,.3)}.btn.s{color:var(--ac);width:100%;justify-content:flex-start;background:var(--ac2)}
+.c{background:var(--g);border:1px solid var(--bd);border-radius:16px;box-shadow:var(--sh);padding:16px}
+.pill{display:inline-flex;gap:5px;align-items:center;padding:3px 9px;border-radius:7px;font-size:11px;font-weight:500;white-space:nowrap}
+.ok{background:var(--okb);color:var(--ok)}.wn{background:var(--wnb);color:var(--wn)}.er{background:var(--erb);color:var(--er)}.in{background:var(--ac2);color:var(--ac)}
+.view{display:none}.view.on{display:block;animation:f .3s}@keyframes f{from{opacity:0;transform:translateY(5px)}}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.stat{display:flex;gap:12px;align-items:center}.stat .bx{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font-size:16px}.stat b{font-size:21px;display:block;line-height:1.1}.stat span{color:var(--mu);font-size:11.5px}
+.row2{display:grid;grid-template-columns:1.7fr 1fr;gap:14px;margin-bottom:14px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}.tab{padding:7px 13px;border-radius:9px;border:1px solid var(--bd);background:var(--g);font:inherit;color:var(--mu);cursor:pointer}.tab.on{background:#fff;color:var(--ac);border-color:#c9cdfb;font-weight:600}
+.ut{display:flex;gap:22px;border-bottom:1px solid var(--ln);margin-bottom:14px}.ut .tab{border:0;background:none;border-radius:0;padding:9px 2px;border-bottom:2px solid transparent;margin-bottom:-1px}.ut .tab.on{border-color:var(--ac)}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:620px}th{color:var(--mu);font-weight:500;text-align:left;padding:10px;font-size:11.5px}td{padding:11px 10px;border-top:1px solid var(--ln)}tr.r{cursor:pointer}tr.r:hover td{background:rgba(238,240,255,.7)}.n{text-align:right;font-variant-numeric:tabular-nums}
+.vi{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;font-size:10px;font-weight:700;margin-right:8px;vertical-align:middle}
+.chart{display:flex;align-items:flex-end;gap:7px;height:140px;padding-top:8px;border-bottom:1px solid var(--ln)}.chart div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:1px}.chart span{border-radius:2px;display:block}
+.leg{display:flex;gap:14px;color:var(--mu);margin:6px 0}.leg i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px}
+.donut{display:flex;align-items:center;gap:18px;justify-content:center;margin-top:14px}.donut b{font-size:30px;display:block}
+.drop{border:1.5px dashed rgba(69,73,224,.4);border-radius:16px;padding:30px;text-align:center;background:rgba(238,240,255,.5)}.drop .big{font-size:34px}
+.file{display:flex;gap:14px;margin-top:14px;padding:14px;border-radius:14px;background:var(--g2);border:1px solid var(--bd)}.file ul{list-style:none;padding:0;flex:1}.file li{display:flex;justify-content:space-between;padding:5px 0;color:var(--mu)}.file li.d{color:var(--tx)}.file li.d:before{content:"✓";color:#fff;background:var(--ok);width:15px;height:15px;border-radius:50%;font-size:10px;display:inline-grid;place-items:center;margin-right:9px}.file li:not(.d):before{content:"";display:inline-block;width:15px;height:15px;border-radius:50%;border:2px solid var(--ln);margin-right:9px;vertical-align:middle}.file li{justify-content:flex-start}.file li.a{color:var(--ac);font-weight:600}.file li.a:before{border-color:var(--ac)}
+.prog{height:5px;border-radius:9px;background:var(--ln);margin-top:8px;overflow:hidden}.prog i{display:block;height:100%;background:var(--ac);width:0;transition:.6s}
+.two{display:grid;grid-template-columns:1.5fr 1fr;gap:14px}
+.paper{background:#fff;border-radius:10px;padding:22px;box-shadow:0 6px 24px rgba(60,70,140,.15);font-size:11px;color:#1a1d3b}.paper th{background:#f3f4fb;padding:7px}.paper td{padding:7px}.paper table{min-width:0}.paper tr.hl td{background:#e6e8ff}
+.brand{display:flex;justify-content:space-between;margin-bottom:16px}.tot{margin:10px 0 0 auto;width:190px;display:grid;gap:5px}.tot div{display:flex;justify-content:space-between}.tot .t{background:#e6e8ff;padding:7px;border-radius:6px;font-weight:700}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:9px 8px;margin-top:10px}.kv span{color:var(--mu)}
+.tr{position:relative;padding-left:22px}.tr:before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:2px;background:var(--ln)}
+.ti{position:relative;padding:0 0 13px;opacity:.25;transition:.4s}.ti.on{opacity:1}.ti:before{content:"";position:absolute;left:-22px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--ac);border:3px solid #fff;box-shadow:0 0 0 1px var(--ac)}.ti.e:before{background:var(--er);box-shadow:0 0 0 1px var(--er)}.ti b{display:block;font-weight:600}.ti small{color:var(--mu)}.ti time{float:right;color:var(--mu);font-size:11px}
+.mis{border-radius:14px;padding:16px;background:var(--erb);transition:.5s}.mis.res{background:var(--okb)}.amt{font-size:24px;font-weight:700;margin:10px 0}.amt s{color:var(--mu);font-size:17px;font-weight:500}
+.cells{display:grid;grid-template-columns:36px 1.5fr 40px 80px 1fr;border:1px solid var(--ln);border-radius:9px;overflow:hidden;margin:10px 0;background:var(--g2)}.cells div{padding:9px;border-right:1px solid var(--ln)}.cells div:last-child{background:var(--ac2);color:var(--ac);font-weight:700;border:0}
+.set{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-top:1px solid var(--ln)}.set span{display:block;color:var(--mu);font-size:11.5px}
+.sw{width:38px;height:22px;border-radius:99px;background:#cfd3ec;position:relative;cursor:pointer;flex:none;transition:.25s}.sw:after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.25s}.sw.on{background:var(--ac)}.sw.on:after{left:19px}
+select{padding:7px 9px;border-radius:9px;border:1px solid var(--ln);background:var(--g2);font:inherit;color:var(--tx)}
+.log{display:flex;gap:14px;align-items:center;padding:12px 4px;border-top:1px solid var(--ln)}.log:first-child{border:0}.log .t{width:100px;color:var(--mu)}.log .v{width:76px;font-weight:600}.log .d{flex:1}.log .d span{display:block;color:var(--mu)}
+@media(max-width:900px){.app{grid-template-columns:1fr}.side{flex-direction:row;overflow-x:auto;border:0}.logo,.agent{display:none}.nav{width:auto;white-space:nowrap}.stats{grid-template-columns:1fr 1fr}.row2,.two{grid-template-columns:1fr}body{padding:8px}}
+</style></head><body>
+<div class="win"><div class="bar"><i></i><i></i><i></i></div>
+<div class="app">
+<aside class="side"><div class="logo"><b>◆</b>Ledger</div><div id="nav"></div>
+<div class="agent"><span class="dot"></span><div><b>Agent active</b>Processing invoices<br>3 in progress</div></div></aside>
+<main>
+<div class="top"><div class="search">⌕ <input placeholder="Search invoices, vendors, amounts, status…"></div><span style="color:var(--mu);font-size:16px">🔔</span><div class="av">DD</div></div>
+
+<section class="view" id="dash">
+<div class="head"><div><h1>Good morning, Dristanta</h1><p class="sub">Here's an overview of your invoice reconciliation.</p></div><button class="btn">Last 30 days ⌄</button></div>
+<div class="stats" id="stats"></div>
+<div class="row2"><div class="c"><h2>Processing activity</h2><div class="leg"><span><i style="background:#16a85c"></i>Reconciled</span><span><i style="background:#f59e0b"></i>Needs review</span><span><i style="background:#ef4457"></i>Failed</span></div><div class="chart" id="chart"></div></div>
+<div class="c"><h2>Reconciliation rate</h2><div class="donut"><svg width="130" height="130" viewBox="0 0 42 42"><circle cx="21" cy="21" r="15.9" fill="none" stroke="#e3e6f7" stroke-width="4.5"/><circle cx="21" cy="21" r="15.9" fill="none" stroke="#16a85c" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="75 25" transform="rotate(-90 21 21)"/></svg><div><b>75%</b>Reconciled<br><span style="color:var(--ok)">↗ +12% vs last 30 days</span></div></div></div></div>
+<div class="c"><div style="display:flex;justify-content:space-between"><h2>Recent activity</h2><a style="color:var(--ac);cursor:pointer" data-go="audit">View all ›</a></div><div class="tw"><table><thead><tr><th>Time</th><th>Invoice</th><th>Event</th><th>Details</th></tr></thead><tbody id="act"></tbody></table></div></div>
+</section>
+
+<section class="view" id="inv">
+<div class="head"><div><h1>Invoices</h1><p class="sub">Manage and monitor all invoices processed by the self-correction ledger agent.</p></div><button class="btn p" data-go="upload">⇪ Upload Invoice</button></div>
+<div class="tabs" id="itabs"></div>
+<div class="c tw"><table><thead><tr><th>Invoice No.</th><th>Vendor</th><th class="n">Amount</th><th>Date</th><th>Status</th><th>Discrepancies</th><th></th></tr></thead><tbody id="ibody"></tbody></table></div>
+</section>
+
+<section class="view" id="upload">
+<div class="head"><div><h1>Upload Invoice</h1><p class="sub">Upload a PDF invoice to extract, validate and reconcile automatically.</p></div></div>
+<div class="tabs" id="umode"><button class="tab on" data-u="single">Single invoice</button><button class="tab" data-u="bulk">Bulk upload</button></div>
+<div class="c" id="u-single" style="max-width:760px"><div class="drop"><div class="big">☁</div><h2 style="margin-top:6px">Drop your invoice here</h2><p class="sub">Supports PDF files up to 50 MB</p><button class="btn" style="margin-top:12px;color:var(--ac)" id="choose">Choose file</button></div>
+<div class="file" id="file" style="display:none"><div style="font-size:30px">📄</div><div style="flex:1"><div style="display:flex;justify-content:space-between"><b>invoice_2841.pdf <span class="sub">2.4 MB</span></b><span class="pill er" style="cursor:pointer" id="cancel">Cancel</span></div><ul id="steps" style="margin-top:8px"></ul><div class="prog"><i id="pb"></i></div></div></div></div>
+<div class="c" id="u-bulk" style="display:none">
+<div class="drop"><div class="big">🗂</div><h2 style="margin-top:6px">Drop multiple invoices here</h2><p class="sub">Up to 100 PDFs · 50 MB each · processed in parallel</p>
+<div style="display:flex;gap:8px;justify-content:center;margin-top:12px"><button class="btn" style="color:var(--ac)" id="bchoose">Choose files</button><button class="btn" id="bsample">Use 6 sample invoices</button></div><input type="file" id="bf" accept="application/pdf" multiple hidden></div>
+<div id="bq" style="display:none;margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h2 id="bt">0 files</h2><span class="sub" id="bs"></span></div><div style="display:flex;gap:8px"><button class="btn" id="bclear">Clear</button><button class="btn p" id="brun">▶ Reconcile all</button></div></div>
+<div class="prog" style="height:7px;margin:12px 0"><i id="bp"></i></div>
+<div class="tw"><table><thead><tr><th>File</th><th>Size</th><th>Stage</th><th style="width:150px">Progress</th><th>Result</th></tr></thead><tbody id="bb"></tbody></table></div></div></div>
+</section>
+
+<section class="view" id="queue">
+<div class="head"><div><h1>Needs Review</h1><p class="sub">Invoices that require human review or could not be fully reconciled.</p></div></div>
+<div class="tabs"><button class="tab on">All (4)</button><button class="tab">Low confidence (2)</button><button class="tab">Unresolved (1)</button><button class="tab">Validation error (1)</button></div>
+<div class="c tw"><table><thead><tr><th>Invoice No.</th><th>Vendor</th><th class="n">Amount</th><th>Issue</th><th>Stop reason</th><th>Priority</th><th>Updated</th></tr></thead><tbody id="qbody"></tbody></table></div>
+</section>
+
+<section class="view" id="detail">
+<div class="head"><div><a class="sub" style="cursor:pointer" data-go="inv">‹ Back to invoices</a><h1 style="margin-top:6px">INV-2841 <span class="pill ok">● Reconciled</span></h1><p class="sub">Northstar Industrial · $4,087.52 · Mar 12, 2024</p></div><div style="display:flex;gap:8px"><button class="btn" id="replay">↻ Replay agent</button><button class="btn">⤓ Download PDF</button><button class="btn">⋯</button></div></div>
+<div class="ut" id="dtabs"><button class="tab on" data-d="doc">Document</button><button class="tab" data-d="ext">Extracted Data</button><button class="tab" data-d="rec">Reconciliation</button></div>
+
+<div id="d-doc" class="two"><div class="paper"><div class="brand"><div><b style="letter-spacing:.14em;font-size:15px">▲ NORTHSTAR</b><br><span style="letter-spacing:.2em;font-size:9px">INDUSTRIAL</span></div><div style="text-align:right"><b style="font-size:15px">INVOICE</b><br>INV-2841 · Mar 12, 2024</div></div><table><thead><tr><th>#</th><th>Description</th><th class="n">Qty</th><th class="n">Unit Price</th><th class="n">Amount</th></tr></thead><tbody class="lines"></tbody></table><div class="tot"><div><span>Subtotal</span><span>$3,464.00</span></div><div><span>Tax (18%)</span><span>$623.52</span></div><div class="t"><span>Total</span><span>$4,087.52</span></div></div></div>
+<div style="display:grid;gap:14px;align-content:start"><div class="c"><h2>Invoice information</h2><div class="kv"><span>Invoice No.</span>INV-2841<span>Invoice Date</span>Mar 12, 2024<span>Due Date</span>Apr 11, 2024<span>PO Number</span>PO-77821<span>Vendor</span>Northstar Industrial<span>Total</span>$4,087.52<span>Currency</span>USD</div></div><div class="c"><h2>Quick actions</h2><div style="display:grid;gap:8px;margin-top:10px"><button class="btn s">↻ Re-run extraction</button><button class="btn s">↻ Re-run reconciliation</button></div></div></div></div>
+
+<div id="d-ext" style="display:none"><div class="two"><div class="c tw"><h2>Line items · Table 1 · Page 2</h2><table><thead><tr><th>#</th><th>Description</th><th class="n">Qty</th><th class="n">Unit Price</th><th class="n">Amount</th><th>Source</th></tr></thead><tbody class="lines2"></tbody></table></div>
+<div class="c"><h2>Header &amp; totals</h2><div class="kv"><span>Invoice</span>INV-2841<span>Vendor</span>Northstar Industrial<span>Subtotal</span>$3,464.00<span>Tax (18%)</span>$623.52<span>Total</span>$4,087.52<span>Pages</span>3 (2 tables)<span>OCR</span>Not required</div></div></div></div>
+
+<div id="d-rec" style="display:none"><div class="two" style="grid-template-columns:1fr 1.25fr">
+<div class="c"><h2>Agent activity</h2><p class="sub" style="margin-bottom:14px">Operational trace of the LangGraph run.</p><div class="tr" id="trace"></div></div>
+<div style="display:grid;gap:14px;align-content:start"><div class="mis" id="mis"><div style="display:flex;justify-content:space-between"><div><b style="font-size:15px">Line item mismatch</b><div style="color:var(--er)">Row 01 · Industrial Filter</div></div><span class="pill er" id="mp">Detected</span></div><div class="amt"><s>$1,240.00</s> → <span>$1,014.00</span></div><span class="sub">12 × $84.50 = $1,014.00. Corrected using invoice evidence.</span></div>
+<div class="c"><div class="tabs" id="rt"><button class="tab on" data-r="0">Details</button><button class="tab" data-r="1">Evidence</button><button class="tab" data-r="2">Validation</button><button class="tab" data-r="3">Raw extraction</button></div><div id="rbody"></div></div></div></div></div>
+</section>
+
+<section class="view" id="audit"><div class="head"><div><h1>Audit Trail</h1><p class="sub">Complete history of agent actions, corrections and evidence.</p></div><select><option>All invoices</option></select></div><div class="c" id="log"></div></section>
+
+<section class="view" id="settings"><div class="head"><div><h1>Settings</h1><p class="sub">Configure extraction, validation and agent behaviour.</p></div><button class="btn p">Save changes</button></div><div class="tabs" id="stabs"></div><div class="c" style="max-width:720px" id="sbody"></div></section>
+</main></div></div>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const NV=[['dash','Dashboard','<rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>'],['inv','Invoices','<path d="M6 3h9l4 4v14H6z"/>'],['rec','Reconciliation','<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>'],['queue','Review Queue','<path d="M12 4 3 20h18z"/><path d="M12 10v4"/>',4],['audit','Audit Trail','<path d="M6 3h9l4 4v14H6z"/><path d="M9 13h6"/>'],['settings','Settings','<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>']];
+$('#nav').innerHTML=NV.map(n=>`<button class="nav" data-go="${n[0]}"><svg class="ic" viewBox="0 0 24 24">${n[2]}</svg>${n[1]}${n[3]?`<em>${n[3]}</em>`:''}</button>`).join('');
+function go(v){let t=null;if(v=='rec'){v='detail';t='rec'}if(v=='detail'&&!t)t='doc';$$('.view').forEach(e=>e.classList.toggle('on',e.id==v));$$('.nav').forEach(n=>{const k=n.dataset.go;n.classList.toggle('on',k==v||(v=='detail'&&(k=='rec'&&t=='rec'||k=='inv'&&t!='rec'))||(v=='upload'&&k=='inv'))});if(t)dt(t);scrollTo(0,0)}
+function dt(k){$$('#dtabs .tab').forEach(x=>x.classList.toggle('on',x.dataset.d==k));['doc','ext','rec'].forEach(i=>$('#d-'+i).style.display=i==k?'':'none');if(k=='rec')play()}
+document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g)return go(g.dataset.go);const d=e.target.closest('[data-d]');if(d)return dt(d.dataset.d);if(e.target.closest('tr.r'))go('detail')});
+const P={ok:['ok','Reconciled'],wn:['wn','Needs review'],in:['in','Processing'],er:['er','Failed']},pl=k=>`<span class="pill ${P[k][0]}">● ${P[k][1]}</span>`;
+$('#stats').innerHTML=[['in','▤','24','Total invoices · +20%'],['ok','↗','18','Reconciled · 75%'],['wn','!','4','Needs review · 17%'],['er','✕','2','Failed · 8%']].map(s=>`<div class="c stat"><div class="bx ${s[0]}">${s[1]}</div><div><b>${s[2]}</b><span>${s[3]}</span></div></div>`).join('');
+$('#chart').innerHTML=[6,4,8,5,9,7,4,10,6,8,5,9,7,6,8].map((v,i)=>{const w=i%5==2?1:0,f=i%7==3?1:0;return `<div title="Day ${i+1}"><span style="height:${w*7}px;background:#f59e0b"></span><span style="height:${f*7}px;background:#ef4457"></span><span style="height:${v*9}px;background:#16a85c"></span></div>`}).join('');
+$('#act').innerHTML=[['09:41','INV-2841','ok','All checks passed · 1 correction applied'],['09:32','INV-7732','wn','2 discrepancies · Tax calculation mismatch'],['09:20','INV-6621','in','Validating ledger'],['09:12','INV-5580','ok','All checks passed']].map(r=>`<tr class="r"><td>${r[0]}</td><td><b>${r[1]}</b></td><td>${pl(r[2])}</td><td>${r[3]}</td></tr>`).join('');
+const IV=[['INV-2841','Northstar Industrial','$4,087.52','Mar 12, 2024','ok',1,'N','#e3e6ff'],['INV-7732','Acme Manufacturing','$1,240.00','Mar 10, 2024','wn',2,'A','#e0ecff'],['INV-6621','Global Supplies Co.','$980.40','Mar 08, 2024','in','–','G','#e6e9f5'],['INV-5580','Vertex Systems','$12,450.00','Mar 06, 2024','ok',0,'V','#ffe5df'],['INV-4419','Prime Components','$2,310.75','Mar 04, 2024','ok',1,'P','#dfe3ff'],['INV-3302','Kolkata Industrial','$650.00','Mar 02, 2024','er',3,'K','#ffe0e4'],['INV-2291','Eastern Traders','$3,210.00','Feb 28, 2024','ok',0,'E','#e0f0ff'],['INV-1180','Horizon Logistics','$870.33','Feb 25, 2024','wn',1,'H','#ffefd9']];
+const cnt=k=>IV.filter(r=>r[4]==k).length;
+function drawI(f){$('#itabs').innerHTML=[['all','All (24)'],['ok','Reconciled (18)'],['wn','Needs review (4)'],['in','Processing (2)'],['er','Failed (2)']].map(t=>`<button class="tab ${t[0]==f?'on':''}" data-f="${t[0]}">${t[1]}</button>`).join('');
+ $('#ibody').innerHTML=IV.filter(r=>f=='all'||r[4]==f).map(r=>`<tr class="r"><td><b>${r[0]}</b></td><td><span class="vi" style="background:${r[7]};color:var(--ac)">${r[6]}</span>${r[1]}</td><td class="n">${r[2]}</td><td>${r[3]}</td><td>${pl(r[4])}</td><td>${r[5]}</td><td>⋯</td></tr>`).join('')}
+drawI('all');$('#itabs').onclick=e=>{const f=e.target.dataset.f;if(f)drawI(f)};
+const PR={High:'er',Medium:'wn',Low:'in'};
+$('#qbody').innerHTML=[['INV-7732','Acme Manufacturing','$1,240.00','2 discrepancies','NO_PROGRESS','High','8m ago'],['INV-1180','Horizon Logistics','$870.33','Tax mismatch','MAX_REVISIONS_EXCEEDED','Medium','2h ago'],['INV-4419','Prime Components','$2,310.75','Low evidence (61%)','INSUFFICIENT_EVIDENCE','Medium','4h ago'],['INV-3302','Kolkata Industrial','$650.00','Unable to reconcile','UNRESOLVED','High','6h ago']].map(r=>`<tr class="r"><td><b>${r[0]}</b></td><td>${r[1]}</td><td class="n">${r[2]}</td><td>${r[3]}</td><td><span class="pill in" style="font-size:10px">${r[4]}</span></td><td><span class="pill ${PR[r[5]]}">${r[5]}</span></td><td>${r[6]}</td></tr>`).join('');
+const L=[['Industrial Filter',12,84.5,1014],['Hydraulic Valve',4,320,1280],['Copper Fitting',10,12,120],['Pressure Sensor',2,450,900],['Service Charge',1,150,150]],m=n=>'$'+n.toLocaleString('en-US',{minimumFractionDigits:2});
+function lines(bad){$$('.lines').forEach(b=>b.innerHTML=L.map((l,i)=>`<tr class="${i==0&&!bad?'hl':''}"><td>0${i+1}</td><td>${l[0]}</td><td class="n">${l[1]}</td><td class="n">${m(l[2])}</td><td class="n">${i==0&&bad?'<span style="color:#e5384b">$1,240.00</span>':m(l[3])}</td></tr>`).join(''));}
+lines(false);$('.lines2').innerHTML=L.map((l,i)=>`<tr><td>0${i+1}</td><td>${l[0]}</td><td class="n">${l[1]}</td><td class="n">${m(l[2])}</td><td class="n">${m(l[3])}</td><td><span class="sub">p2·t1·r${i+1}</span></td></tr>`).join('');
+const TR=[['09:41:02','Invoice extracted','Parsed 3 pages (2 tables)',0],['09:41:04','12 line items identified','Table 1 · Page 2',0],['09:41:05','Mathematical validation','qty × price, subtotal, tax, total',0],['09:41:05','Discrepancy detected','Row 01 · Amount · Expected $1,014.00 · Extracted $1,240.00',1],['09:41:06','Searched invoice evidence','Hybrid BM25 + vector · Page 2 · Table 1 · Row 01',0],['09:41:06','Evidence verified','Confidence 97%',0],['09:41:07','Correction applied','$1,240.00 → $1,014.00',0],['09:41:07','Re-validation passed','All checks passed',0]];
+$('#trace').innerHTML=TR.map(t=>`<div class="ti ${t[3]?'e':''}"><time>${t[0]}</time><b>${t[1]}</b><small>${t[2]}</small></div>`).join('');
+const RB=['<div class="kv"><span>Field</span>Amount (Row 01)<span>Original value</span>$1,240.00<span>Corrected value</span>$1,014.00<span>Reason</span>Quantity × unit price<span>Source</span>Page 2 · Table 1 · Row 01 · Column Amount<span>Confidence</span>97%</div>','<div class="cells"><div>01</div><div>Industrial Filter</div><div>12</div><div>$84.50</div><div>$1,014.00</div></div><span class="sub">“Industrial Filter | Qty: 12 | Unit Price: $84.50 | Amount: $1,014.00”</span><div class="kv"><span>Invoice</span>INV-2841<span>Page / Table / Row</span>2 / 1 / 01<span>Retrieval</span>BM25 + vector · invoice-scoped</div><button class="btn" style="margin-top:12px" data-d="doc">↗ Open in document</button>','<div class="kv"><span>Line math</span><span class="pill ok">✓ Pass</span><span>Subtotal</span><span class="pill ok">✓ $3,464.00</span><span>Tax 18%</span><span class="pill ok">✓ $623.52</span><span>Total</span><span class="pill ok">✓ $4,087.52</span></div>','<pre style="font-size:11.5px;white-space:pre-wrap;line-height:1.6">{ "id":"line_01", "quantity":12,\n  "unit_price":84.50, "amount":1240.00,\n  "source":{"page":2,"table":1,"row":1} }</pre>'];
+function rb(i){$$('#rt .tab').forEach((t,j)=>t.classList.toggle('on',j==i));$('#rbody').innerHTML=RB[i]}rb(0);$('#rt').onclick=e=>{if(e.target.dataset.r)rb(+e.target.dataset.r)};
+let tm=[];function play(){tm.forEach(clearTimeout);tm=[];$$('.ti').forEach(x=>x.classList.remove('on'));const ms=$('#mis');ms.className='mis';$('#mp').className='pill er';$('#mp').textContent='Detected';lines(true);
+ $$('.ti').forEach((x,i)=>tm.push(setTimeout(()=>{x.classList.add('on');if(i==6){ms.classList.add('res');$('#mp').className='pill ok';$('#mp').textContent='Resolved';lines(false)}},300+i*650)))}
+$('#replay').onclick=()=>{dt('rec');play()};
+const ST=['Uploading','Reading document','Extracting text and tables','Building evidence index','Validating ledger','Reconciling discrepancies'];let ut=[];
+function up(){ut.forEach(clearTimeout);ut=[];$('#file').style.display='flex';$('#pb').style.width='0';const draw=n=>$('#steps').innerHTML=ST.map((s,i)=>`<li class="${i<n?'d':i==n?'a':''}">${s}</li>`).join('');draw(0);ST.forEach((s,i)=>ut.push(setTimeout(()=>{draw(i+1>5?5:i+1);$('#pb').style.width=((i+1)/6*100)+'%';if(i==5)setTimeout(()=>go('rec'),700)},700*(i+1))))}
+$('#choose').onclick=up;$('.drop').ondblclick=up;$('#cancel').onclick=()=>{ut.forEach(clearTimeout);$('#file').style.display='none'};
+const ev=[['09:42','INV-2841','Reconciliation completed','All checks passed (1 correction)','ok'],['09:42','INV-2841','Correction applied','$1,240.00 → $1,014.00 (Row 01)','in'],['09:42','INV-2841','Evidence retrieved','Page 2 · Table 1 · Row 01','in'],['09:42','INV-2841','Validation detected mismatch','1 discrepancy found','er'],['09:41','INV-2841','Invoice extracted','Parsed 3 pages (2 tables)','in'],['09:40','INV-7732','Needs review','Stop reason NO_PROGRESS · tax mismatch','wn']];
+$('#log').innerHTML=ev.map(r=>`<div class="log"><div class="t">Mar 12, ${r[0]}</div><div class="v">${r[1]}</div><span class="pill ${r[4]}">●</span><div class="d"><b>${r[2]}</b><span>${r[3]}</span></div></div>`).join('');
+const SS={General:[['Currency format','USD – US Dollar ($)'],['Date format','MM/DD/YYYY'],['Default timezone','(UTC+05:30) Asia/Kolkata']],Extraction:[['Auto-detect scanned PDFs',1],['Extract tables',1],['Preserve document layout',1],['High accuracy mode',0]],Validation:[['Currency precision','2'],['Rounding tolerance','0.01'],['Validate tax per line',1]],Agent:[['Max correction iterations','3'],['Evidence confidence threshold','0.90'],['Retrieval top-K','5'],['Auto-reconciliation',1]],Notifications:[['Reconciliation completed',1],['Needs review',1],['Processing failed',1]]};
+function ds(k){$('#stabs').innerHTML=Object.keys(SS).map(x=>`<button class="tab ${x==k?'on':''}" data-s="${x}">${x}</button>`).join('');$('#sbody').innerHTML=SS[k].map(r=>`<div class="set"><div>${r[0]}</div>${typeof r[1]=='number'?`<div class="sw ${r[1]?'on':''}" onclick="this.classList.toggle('on')"></div>`:`<select><option>${r[1]}</option></select>`}</div>`).join('')}
+ds('General');$('#stabs').onclick=e=>{if(e.target.dataset.s)ds(e.target.dataset.s)};
+let bf=[],bt=[];const BS=['Queued','Reading document','Extracting tables','Building index','Validating','Auditing','Done'];
+function drawB(){$('#bq').style.display=bf.length?'block':'none';$('#bt').textContent=bf.length+' files';
+ const d=bf.filter(f=>f.p>=100).length,tot=bf.length?bf.reduce((a,f)=>a+f.p,0)/bf.length:0;$('#bp').style.width=tot+'%';$('#bs').textContent=d+' of '+bf.length+' complete';
+ $('#bb').innerHTML=bf.map(f=>`<tr class="${f.p>=100?'r':''}"><td><b>${f.n}</b></td><td>${f.z}</td><td>${f.p>=100?'Done':BS[Math.min(6,Math.ceil(f.p/17))]}</td><td><div class="prog" style="margin:0"><i style="width:${f.p}%"></i></div></td><td>${f.p>=100?pl(f.r):'<span class="sub">–</span>'}</td></tr>`).join('')}
+function setB(a){bf=a;bt.forEach(clearInterval);bt=[];drawB()}
+$('#umode').onclick=e=>{const u=e.target.dataset.u;if(!u)return;$$('#umode .tab').forEach(t=>t.classList.toggle('on',t.dataset.u==u));$('#u-single').style.display=u=='single'?'':'none';$('#u-bulk').style.display=u=='bulk'?'':'none'};
+$('#bchoose').onclick=()=>$('#bf').click();
+$('#bf').onchange=e=>setB([...e.target.files].map(f=>({n:f.name,z:(f.size/1048576).toFixed(1)+' MB',p:0,r:'ok'})));
+$('#bsample').onclick=()=>setB([['invoice_2841.pdf','2.4 MB','ok'],['invoice_7732.pdf','1.1 MB','wn'],['invoice_6621.pdf','0.9 MB','ok'],['invoice_5580.pdf','3.2 MB','ok'],['scan_4419.pdf','5.6 MB','wn'],['invoice_3302.pdf','0.7 MB','ok']].map(x=>({n:x[0],z:x[1],p:0,r:x[2]})));
+$('#bclear').onclick=()=>setB([]);
+$('#brun').onclick=()=>{bt.forEach(clearInterval);bf.forEach((f,i)=>{f.p=0;setTimeout(()=>{bt.push(setInterval(()=>{f.p=Math.min(100,f.p+6+Math.random()*9);drawB();if(f.p>=100)clearInterval(bt[bt.length-1])},350))},i*350)})};
+$('#bb').onclick=e=>{if(e.target.closest('tr.r'))go('detail')};
+go('dash');
+</script></body></html>
