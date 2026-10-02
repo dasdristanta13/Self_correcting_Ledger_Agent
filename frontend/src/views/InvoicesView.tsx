@@ -3,7 +3,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { PageHeader } from "../components/ui/PageHeader";
 import { StatusPill } from "../components/ui/Pill";
 import { LoadingRows } from "../components/ui/Skeleton";
-import { Tabs } from "../components/ui/Tabs";
+import { Tabs, tabIds } from "../components/ui/Tabs";
 import { useJobs } from "../hooks/useJobs";
 import { correctionCount, countByKey, filterJobs, type StatusKey } from "../lib/derive";
 import { formatDate, formatMoney } from "../lib/format";
@@ -34,7 +34,7 @@ export function InvoicesView() {
             { id: "wn", label: "Needs review", count: c.wn }, { id: "in", label: "Processing", count: c.in }, { id: "er", label: "Failed", count: c.er }]} />
         <input type="search" className="search" aria-label="Search invoices" placeholder="Search invoices" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
-      <section className="panel panel-flush" role="tabpanel" aria-label="Invoices">
+      <section className="panel panel-flush" role="tabpanel" id={tabIds("inv", tab).panel} aria-labelledby={tabIds("inv", tab).tab}>
         {rows.length === 0 ? <p className="muted pad">No invoices match.</p> : (
           <div className="table-scroll" tabIndex={0} role="region" aria-label="Invoices table">
             <table className="data">

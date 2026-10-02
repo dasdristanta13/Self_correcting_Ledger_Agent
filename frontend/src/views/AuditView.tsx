@@ -42,7 +42,7 @@ export function AuditView() {
             <tbody>
               {shown.map((r, i) => (
                 <tr key={`${r.job.job_id}-${i}`}>
-                  <td>{formatDateTime(r.event.started_at)}</td>
+                  <td className="nowrap">{formatDateTime(r.event.started_at)}</td>
                   <td className="cell-name"><a href={detailHref(r.job.job_id, "reconciliation")} title={r.job.filename}>{r.job.filename}</a></td>
                   <td>{nodeLabel(r.event.node)}</td>
                   <td className="muted">{eventDetail(r.event)}</td>

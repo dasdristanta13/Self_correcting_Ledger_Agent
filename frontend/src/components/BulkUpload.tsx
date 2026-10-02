@@ -14,7 +14,7 @@ const CONCURRENCY = 3;
 type Stage = "ready" | "invalid" | "uploading" | "reconciling" | "done" | "failed";
 interface Row { id: number; file: File; stage: Stage; pct: number; job?: Job; message?: string }
 
-const mb = (bytes: number) => `${(bytes / 1048576).toFixed(1)} MB`;
+const mb = (bytes: number) => (bytes < 1048576 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1)} MB`);
 const STAGE_TEXT: Record<Stage, string> = { ready: "Ready", invalid: "Not accepted", uploading: "Uploading", reconciling: "Reconciling", done: "Done", failed: "Failed" };
 
 export function BulkUpload() {
