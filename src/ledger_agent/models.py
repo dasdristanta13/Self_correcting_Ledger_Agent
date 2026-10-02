@@ -127,7 +127,7 @@ class Evidence(BaseModel):
     field: str
     value: Decimal
     source: Provenance
-    confidence: float
+    confidence: float = Field(ge=0, le=1, allow_inf_nan=False)
     chunk_id: str
     quote: str = ""
 

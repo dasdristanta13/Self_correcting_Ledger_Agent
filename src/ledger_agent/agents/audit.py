@@ -1,6 +1,6 @@
 import json
+import math
 from dataclasses import dataclass
-from decimal import Decimal
 from typing import Protocol
 
 from ledger_agent.models import Chunk, Discrepancy, Evidence, Ledger, ScoredChunk
@@ -101,6 +101,8 @@ class LLMProposer:
             try:
                 value = parse_money(str(item["value"]))
                 conf = float(item["confidence"])
+                if not (math.isfinite(conf) and 0 <= conf <= 1):
+                    continue
                 path = item["field"]
                 attr = _attr(parse_path(path))
             except (KeyError, ValueError, TypeError):
@@ -130,7 +132,7 @@ def verify_evidence(ev: Evidence, discrepancy: Discrepancy, chunks: list[ScoredC
             return "value does not match chunk"
     except ValueError:
         return "value does not match chunk"
-    if ev.confidence < threshold:
+    if not (math.isfinite(ev.confidence) and 0 <= ev.confidence <= 1 and ev.confidence >= threshold):
         return f"confidence {ev.confidence:.2f} below threshold {threshold:.2f}"
     return None
 

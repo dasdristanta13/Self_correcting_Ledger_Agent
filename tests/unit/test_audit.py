@@ -1,6 +1,7 @@
 from decimal import Decimal as D
 from ledger_agent.agents.audit import (ChunkValueProposer, LLMProposer, build_query,
                                        retrieve_and_propose, verify_candidates, verify_evidence)
+from ledger_agent.models import Evidence
 from ledger_agent.fakes import FakeLLM, HashingEmbedder
 from ledger_agent.paths import set_field
 from ledger_agent.retrieval.hybrid import build_index
@@ -67,3 +68,20 @@ def test_llm_proposer_cannot_invent_provenance_or_values():
     assert len(evs) == 1 and evs[0].source.row == 1 and evs[0].value == D("1014.00")
     ok, _ = verify_candidates(type(cand)(d, cand.query, cand.retrieved, evs), "INV-001", 0.90)
     assert len(ok) == 1
+
+
+def test_llm_proposer_drops_nonfinite_or_out_of_range_confidence():
+    _, ledger, d, idx = setup()
+    cand = retrieve_and_propose(d, ledger, idx, ChunkValueProposer(), k=5)
+    real = next(s.chunk for s in cand.retrieved if s.chunk.item_id == "line_01")
+    items = [{"field": "items[line_01].amount", "value": "1014.00", "chunk_id": real.chunk_id, "confidence": c}
+             for c in (float("nan"), float("inf"), 5.0, "nan")]
+    assert LLMProposer(FakeLLM([{"evidence": items}])).propose(d, cand.retrieved) == []
+
+
+def test_verifier_rejects_nan_confidence():
+    _, ledger, d, idx = setup()
+    cand = retrieve_and_propose(d, ledger, idx, ChunkValueProposer(), k=5)
+    ev = next(e for e in cand.evidence if e.field == "items[line_01].amount")
+    bad = Evidence.model_construct(**{**ev.__dict__, "confidence": float("nan")})
+    assert "confidence" in verify_evidence(bad, d, cand.retrieved, "INV-001", 0.90)
