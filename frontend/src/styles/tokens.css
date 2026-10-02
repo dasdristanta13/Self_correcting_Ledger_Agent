@@ -1,0 +1,92 @@
+/*
+ * Ledger Agent design tokens.
+ * Scene: an accounts-payable clerk at an office desk, mid-morning, checking supplier
+ * invoices between emails; the page follows their OS theme.
+ * Strategy: restrained. Achromatic surfaces, near-neutral ink tinted toward one accent
+ * hue (357, a deep rose: the auditor's red pen). The accent marks corrections, focus and
+ * the current selection only. Status tones are semantic and always paired with text + shape.
+ * Contrast (WCAG 2.x, computed): body ink 17.4:1 light / 16.3:1 dark; muted 6.6 / 8.3;
+ * accent 6.6 / 9.8; every tone on its wash >= 5.8. Strong line >= 3:1 (non-text).
+ */
+:root {
+  color-scheme: light;
+
+  --bg: oklch(1 0 0);
+  --sunk: oklch(0.975 0.004 357);
+  --ink: oklch(0.22 0.008 357);
+  --muted: oklch(0.48 0.012 357);
+  --line: oklch(0.91 0.006 357);
+  --line-strong: oklch(0.64 0.01 357);
+
+  --accent: oklch(0.5 0.17 357);
+  --accent-wash: oklch(0.965 0.02 357);
+
+  --good: oklch(0.45 0.11 150);
+  --good-bg: oklch(0.965 0.03 150);
+  --warn: oklch(0.49 0.1 65);
+  --warn-bg: oklch(0.965 0.035 85);
+  --bad: oklch(0.49 0.16 27);
+  --bad-bg: oklch(0.962 0.022 27);
+
+  /* Type: one sans family for everything, a mono for quotes and status codes. */
+  --font: "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.75rem;
+
+  /* Space: 4px base, used unevenly on purpose for rhythm. */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.5rem;
+  --s6: 2rem;
+  --s7: 3rem;
+  --s8: 4.5rem;
+  --gutter: 16px;
+
+  /* Shape: containers 10px, inline controls 6px. Nothing else. */
+  --radius: 10px;
+  --radius-sm: 6px;
+
+  /* Motion: state changes only, 150-240ms, exponential ease-out. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 150ms;
+  --dur: 240ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg: oklch(0.17 0 0);
+    --sunk: oklch(0.205 0.005 357);
+    --ink: oklch(0.945 0.004 357);
+    --muted: oklch(0.74 0.01 357);
+    --line: oklch(0.3 0.006 357);
+    --line-strong: oklch(0.52 0.01 357);
+
+    --accent: oklch(0.8 0.11 357);
+    --accent-wash: oklch(0.25 0.035 357);
+
+    --good: oklch(0.82 0.12 150);
+    --good-bg: oklch(0.25 0.035 150);
+    --warn: oklch(0.85 0.11 80);
+    --warn-bg: oklch(0.26 0.035 80);
+    --bad: oklch(0.79 0.12 27);
+    --bad-bg: oklch(0.26 0.045 27);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
