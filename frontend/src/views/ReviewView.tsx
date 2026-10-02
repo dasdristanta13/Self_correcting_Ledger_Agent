@@ -25,11 +25,12 @@ export function ReviewView() {
     return (<>{header}<EmptyState title="Nothing needs review">Every processed invoice reconciled.</EmptyState></>);
   }
   const reasons = [...new Set(queue.map(stopReason))];
-  const rows = reason === "all" ? queue : queue.filter((j) => stopReason(j) === reason);
+  const active = reasons.includes(reason) ? reason : "all";
+  const rows = active === "all" ? queue : queue.filter((j) => stopReason(j) === active);
   return (
     <>
       {header}
-      <Tabs label="Filter by stop reason" value={reason} onChange={setReason} idBase="rev"
+      <Tabs label="Filter by stop reason" value={active} onChange={setReason} idBase="rev"
         tabs={[{ id: "all", label: "All", count: queue.length },
           ...reasons.map((r) => ({ id: r, label: statusCopy(r).label, count: queue.filter((j) => stopReason(j) === r).length }))]} />
       <section className="panel panel-flush">

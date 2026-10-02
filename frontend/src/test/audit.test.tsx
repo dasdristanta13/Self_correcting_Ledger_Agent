@@ -1,8 +1,11 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TraceEvent } from "../api/types";
 import { jobWith } from "./fixtures";
+import { render } from "@testing-library/react";
+import { JobsProvider } from "../hooks/useJobs";
+import { AuditView } from "../views/AuditView";
 import { renderAt } from "./helpers";
 
 vi.mock("../api/client", async () => {
@@ -46,5 +49,21 @@ describe("AuditView", () => {
     vi.mocked(listJobs).mockResolvedValue([]);
     renderAt("#/audit");
     expect(await screen.findByRole("heading", { name: "No activity yet" })).toBeInTheDocument();
+  });
+  it("shows an error with retry when jobs fail to load, not the empty state", async () => {
+    vi.mocked(listJobs).mockRejectedValue(new Error("down"));
+    renderAt("#/audit");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load invoices from the server.");
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "No activity yet" })).toBeNull();
+  });
+  it("falls back to all invoices when the selected invoice disappears after a refresh", async () => {
+    vi.mocked(listJobs).mockResolvedValue([jobWith("a", "RECONCILED"), jobWith("b", "UNRESOLVED"), jobWith("run", null)]);
+    render(<JobsProvider pollMs={30}><AuditView /></JobsProvider>);
+    await userEvent.selectOptions(await screen.findByRole("combobox", { name: "Invoice" }), "b");
+    vi.mocked(listJobs).mockResolvedValue([jobWith("a", "RECONCILED"), jobWith("run", null)]);
+    await waitFor(() => expect(screen.queryByRole("option", { name: "b.pdf" })).toBeNull());
+    expect(screen.getByRole("combobox", { name: "Invoice" })).toHaveValue("all");
+    expect(within(screen.getByRole("table")).getAllByRole("row").length).toBeGreaterThan(1);
   });
 });

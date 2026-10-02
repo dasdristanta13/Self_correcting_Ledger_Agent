@@ -1,7 +1,10 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { jobWith } from "./fixtures";
+import { render } from "@testing-library/react";
+import { JobsProvider } from "../hooks/useJobs";
+import { ReviewView } from "../views/ReviewView";
 import { renderAt } from "./helpers";
 
 vi.mock("../api/client", async () => {
@@ -38,5 +41,14 @@ describe("ReviewView", () => {
     vi.mocked(listJobs).mockResolvedValue([jobWith("a", "RECONCILED")]);
     renderAt("#/review");
     expect(await screen.findByRole("heading", { name: "Nothing needs review" })).toBeInTheDocument();
+  });
+  it("falls back to All when the selected stop reason disappears after a refresh", async () => {
+    vi.mocked(listJobs).mockResolvedValue([jobWith("un", "UNRESOLVED"), jobWith("na", "NO_PROGRESS"), jobWith("run", null)]);
+    render(<JobsProvider pollMs={30}><ReviewView /></JobsProvider>);
+    await userEvent.click(await screen.findByRole("tab", { name: /^No progress/ }));
+    vi.mocked(listJobs).mockResolvedValue([jobWith("un", "UNRESOLVED"), jobWith("run", null)]);
+    await waitFor(() => expect(screen.queryByRole("tab", { name: /^No progress/ })).toBeNull());
+    expect(screen.getByRole("tab", { name: /^All/ })).toHaveAttribute("aria-selected", "true");
+    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(2);
   });
 });
