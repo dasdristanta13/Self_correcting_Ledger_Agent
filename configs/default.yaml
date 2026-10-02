@@ -1,0 +1,6 @@
+max_revisions: 3
+confidence_threshold: 0.90
+top_k: 5
+ocr_min_chars: 30
+validation:
+  tolerance: 0.01
