@@ -26,6 +26,7 @@ export function UploadView() {
     setUploadPct(0);
     try {
       const r = await uploadInvoice(file, setUploadPct);
+      refresh();
       setJobId(r.job_id);
     } catch (e) {
       setUploadError(e instanceof ApiError ? e.message : "Upload failed. Check your connection and try again.");

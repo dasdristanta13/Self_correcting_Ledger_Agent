@@ -114,6 +114,15 @@ describe("App", () => {
     expect(await screen.findByText("Reconciled")).toBeInTheDocument();
     expect(uploadInvoice).toHaveBeenCalledOnce();
   });
+  it("refreshes the shared jobs list after a successful upload", async () => {
+    vi.mocked(uploadInvoice).mockResolvedValue({ job_id: done.job_id, status: "QUEUED" });
+    vi.mocked(getJob).mockReturnValue(new Promise(() => {}));   // job never completes, so only the upload triggers a refresh
+    render(<App />);
+    const initial = vi.mocked(listJobs).mock.calls.length;
+    await userEvent.upload(screen.getByLabelText(/drop an invoice pdf/i), pdf());
+    await waitFor(() => expect(vi.mocked(listJobs).mock.calls.length).toBeGreaterThan(initial));
+    expect(uploadInvoice).toHaveBeenCalledOnce();
+  });
   it("shows the server's message when the upload is rejected", async () => {
     vi.mocked(uploadInvoice).mockRejectedValue(new ApiError("too_large", "File exceeds the 20 MB limit.", 413));
     render(<App />);

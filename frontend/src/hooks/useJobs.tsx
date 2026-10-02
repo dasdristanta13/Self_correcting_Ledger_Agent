@@ -19,7 +19,7 @@ export function JobsProvider({ children, pollMs = 5000 }: { children: ReactNode;
 
   useEffect(() => { alive.current = true; refresh(); return () => { alive.current = false; }; }, [refresh]);
 
-  const active = jobs.some((j) => j.state === "QUEUED" || j.state === "RUNNING");
+  const active = jobs.some((j) => j.state === "QUEUED" || j.state === "RUNNING") || error !== null;
   useEffect(() => {
     if (!active) return;
     const t = setInterval(refresh, pollMs);
