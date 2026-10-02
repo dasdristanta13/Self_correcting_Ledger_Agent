@@ -61,3 +61,10 @@ Remaining gaps: real scanned-OCR backend, real-LLM adapter and embedder (offline
 
 ## Open issues
 Parked for cycle 2 (final-review minors): label/amount in separate PDF text blocks, wider currency symbols, fuzzy header matching (e.g. 'Unit Price (USD)'), `low_quality` flag unused, mixed native/scanned document silently omits scanned pages (no warning recorded), headerless-continuation heuristic can ingest a same-width non-item table.
+
+
+## UI / API / persistence cycle (branch `feature/ui-api-persistence`)
+- [x] Spec, plan, Wave 0 contracts, six parallel streams (job store, vector backend, API, frontend, trace sinks, eval), integration, whole-branch review (opus) + one fix wave with scoped re-review.
+- Final state: 194 Python tests, 50 frontend tests, `npm run build` OK; real-browser check of upload -> result -> reload -> server restart done on port 8787.
+- [ ] Merge decision (user): `feature/core-loop` and `feature/ui-api-persistence` are unmerged; remote `stream/*` branches still exist on origin.
+- Cycle-3 candidates: rank-based confidence in `ChunkValueProposer` (hybrid/bm25 abstain on the `shipping` eval case), chunked-upload size bound, job pruning/pagination, async I/O in the upload handler, real LLM/embedder adapters, real OCR backend.
