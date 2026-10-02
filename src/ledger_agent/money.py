@@ -9,8 +9,15 @@ def q2(value: Decimal) -> Decimal:
 
 
 def parse_money(text: str) -> Decimal:
-    t = text.strip()
-    negative = (t.startswith("(") and t.endswith(")")) or t.startswith("-")
+    t = text.strip().replace("−", "-").replace("–", "-")
+    negative = bool(
+        re.search(r"\(\s*\D{0,4}\d[\d.,]*\s*\)", t)      # (50.00) or $(50.00)
+        or re.search(r"(?<!\w)-\s*\D{0,4}?\d", t)          # -50, $-50, USD -50, -$50
+        or re.search(r"\d\s*-\s*$", t)                      # 50.00-
+    )
+    core = re.sub(r"[^\d.,]", "", t)
+    if re.fullmatch(r"\d+,\d{1,2}", core) or re.search(r"\d\.\d{3},\d{1,2}", core):
+        raise ValueError(f"ambiguous decimal comma format: {text!r}")
     digits = re.sub(r"[^\d.]", "", t)
     if not digits:
         raise ValueError(f"not a money value: {text!r}")

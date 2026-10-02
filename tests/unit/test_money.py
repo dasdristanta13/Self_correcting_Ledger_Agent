@@ -16,3 +16,14 @@ def test_parse_money_rejects_garbage():
 def test_q2_rounds_half_up():
     assert q2(Decimal("1.005")) == Decimal("1.01")
     assert q2(Decimal("9.999")) == Decimal("10.00")
+
+def test_parse_money_signs():
+    for text in ["$-50.00", "USD -50.00", "$(50.00)", "−50.00", "–50.00", "50.00-", "-50.00", "($50.00)"]:
+        assert parse_money(text) == Decimal("-50.00"), text
+    assert parse_money("USD 50.00") == Decimal("50.00")
+
+def test_parse_money_rejects_ambiguous_european_format():
+    for bad in ["1.234,56", "12,50", "€12,50"]:
+        with pytest.raises(ValueError):
+            parse_money(bad)
+    assert parse_money("1,234") == Decimal("1234")
