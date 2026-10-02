@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { getJob } from "../api/client";
 import type { Job } from "../api/types";
 
+export const JOB_NOT_FOUND = "That job no longer exists.";
+
 export function useJob(jobId: string | null, intervalMs = 1000) {
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +25,7 @@ export function useJob(jobId: string | null, intervalMs = 1000) {
         if (cancelled) return;
         const status = (e as { status?: number } | null)?.status;
         if (status === 404) {                              // unknown job: retrying cannot help
-          setError("That job no longer exists.");
+          setError(JOB_NOT_FOUND);
           return;
         }
         setError(e instanceof Error ? e.message : "Network error");

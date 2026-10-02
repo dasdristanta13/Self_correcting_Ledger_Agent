@@ -6,6 +6,8 @@ import { RecentJobs } from "./components/RecentJobs";
 import { ResultView } from "./components/ResultView";
 import { useJob } from "./hooks/useJob";
 
+import { JOB_NOT_FOUND as NOT_FOUND } from "./hooks/useJob";
+
 export default function App() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
@@ -54,8 +56,8 @@ export default function App() {
           </div>
         )}
         {uploadError && <p role="alert" className="field-error">{uploadError}</p>}
-        {pollError && !job && <p role="alert" className="field-error">{pollError}</p>}
-        {pollError && job && working && <p role="status" className="muted">Reconnecting�</p>}
+        {pollError && !job && <p role="alert" className="field-error">{pollError === NOT_FOUND ? pollError : "Lost contact with the server. Retrying…"}</p>}
+        {pollError && job && working && <p role="status" className="muted">Reconnecting…</p>}
       </div>
       {job && <ResultView job={job} />}
       <RecentJobs jobs={recent} selected={jobId} onSelect={setJobId} />

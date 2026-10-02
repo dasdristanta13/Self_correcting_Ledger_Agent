@@ -133,7 +133,23 @@ describe("App", () => {
     vi.mocked(uploadInvoice).mockResolvedValue({ job_id: done.job_id, status: "QUEUED" });
     render(<App />);
     await userEvent.upload(screen.getByLabelText(/drop an invoice pdf/i), pdf());
-    expect(await screen.findByText("Reconnecting�", {}, { timeout: 4000 })).toBeInTheDocument();
+    expect(await screen.findByText("Reconnecting…", {}, { timeout: 4000 })).toBeInTheDocument();
+  });
+  it("shows a friendly message, not the raw network error, before a job loads", async () => {
+    vi.mocked(getJob).mockRejectedValue(new TypeError("Failed to fetch"));
+    vi.mocked(uploadInvoice).mockResolvedValue({ job_id: "j9", status: "QUEUED" });
+    render(<App />);
+    await userEvent.upload(screen.getByLabelText(/drop an invoice pdf/i), pdf());
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Lost contact with the server. Retrying…");
+    expect(alert).not.toHaveTextContent(/Failed to fetch/);
+  });
+  it("keeps the specific message when the job is unknown (404)", async () => {
+    vi.mocked(getJob).mockRejectedValue(new ApiError("not_found", "No such job.", 404));
+    vi.mocked(uploadInvoice).mockResolvedValue({ job_id: "j9", status: "QUEUED" });
+    render(<App />);
+    await userEvent.upload(screen.getByLabelText(/drop an invoice pdf/i), pdf());
+    expect(await screen.findByRole("alert")).toHaveTextContent("That job no longer exists.");
   });
   it("lists recent jobs and opens one on click", async () => {
     vi.mocked(listJobs).mockResolvedValue([done]);
