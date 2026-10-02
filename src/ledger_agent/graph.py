@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import dataclasses
+import logging
 import uuid
 from dataclasses import dataclass, field
 from functools import wraps
@@ -202,6 +204,14 @@ def run_invoice(pdf_path: str, deps: Deps, invoice_id: str | None = None,
     if invoice_id:
         initial["invoice_id"] = invoice_id
     limit = 4 * deps.config.max_revisions + 30
+    built: list = []
+    inner_factory = deps.vector_factory
+    if inner_factory is not None:
+        def recording_factory(*a, **kw):
+            idx = inner_factory(*a, **kw)
+            built.append(idx)
+            return idx
+        deps = dataclasses.replace(deps, vector_factory=recording_factory)
     try:
         final = build_graph(deps).invoke(initial, {"recursion_limit": limit})
     except GraphRecursionError as exc:
@@ -209,6 +219,12 @@ def run_invoice(pdf_path: str, deps: Deps, invoice_id: str | None = None,
             invoice_id=invoice_id or Path(pdf_path).stem, status=Status.MAX_REVISIONS_EXCEEDED,
             iterations=0, ledger=None, original_ledger=None, corrections=[], evidence=[],
             error=f"graph recursion limit ({limit}) exceeded: {exc}")
+    finally:
+        for idx in built:                       # idempotent; guarantees no leaked index on an aborted run
+            try:
+                idx.dispose()
+            except Exception:
+                logging.getLogger(__name__).exception("index dispose failed")
     return ReconciliationResult(
         invoice_id=final.get("invoice_id", Path(pdf_path).stem), status=final["status"],
         iterations=final.get("revision", 0), ledger=final.get("ledger"),

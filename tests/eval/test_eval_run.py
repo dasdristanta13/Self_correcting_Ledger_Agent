@@ -32,3 +32,27 @@ def test_reports_render(tmp_path):
     assert "| variant |" in md and "hybrid" in md and "false-correction" in md.lower()
     rows = list(csv.DictReader(io.StringIO(to_csv(res))))
     assert {r["variant"] for r in rows} == {"no_rag", "vector", "bm25", "hybrid"}
+
+
+def test_shipping_case_never_yields_a_false_correction_in_any_mode(tmp_path):
+    from ledger_agent.eval.variants import MODES
+
+    res = run_evaluation([c for c in default_cases() if c.name == "shipping"], workdir=tmp_path)
+    for variant in MODES:
+        (o,) = res.outcomes[variant]
+        assert o.final == o.truth or o.status in ("UNRESOLVED", "INSUFFICIENT_EVIDENCE"), (variant, o.status)
+
+
+def test_eval_cli_writes_a_gitignore_into_the_output_dir(tmp_path, monkeypatch):
+    import sys
+
+    from ledger_agent.eval import __main__ as cli
+
+    out = tmp_path / "rep"
+    monkeypatch.setattr(sys, "argv", ["eval", "--out", str(out)])
+    monkeypatch.setattr(cli, "run_evaluation",
+                        lambda workdir: run_evaluation([c for c in default_cases() if c.name == "clean"],
+                                                       workdir=workdir))
+    cli.main()
+    assert (out / ".gitignore").read_text().strip() == "*"
+    assert (out / "report.md").exists()

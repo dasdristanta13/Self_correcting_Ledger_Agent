@@ -11,6 +11,9 @@ def main() -> None:
     args = p.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    gitignore = out / ".gitignore"
+    if not gitignore.exists():          # generated output must not be committed by accident
+        gitignore.write_text("*\n", encoding="ascii")
     res = run_evaluation(workdir=out / "pdfs")
     (out / "report.md").write_text(to_markdown(res), encoding="utf-8")
     (out / "results.csv").write_text(to_csv(res), encoding="utf-8")

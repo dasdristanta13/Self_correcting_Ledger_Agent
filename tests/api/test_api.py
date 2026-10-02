@@ -119,7 +119,7 @@ def test_trace_endpoint_returns_stored_events(tmp_path, pdf_bytes):
     assert c.get(f"/api/invoices/{jid}/trace").json() == [{"node": "ingest", "latency_ms": 1.0}]
 
 
-def test_deps_factory_crash_becomes_error_job_not_500(tmp_path, pdf_bytes):
+def test_deps_factory_crash_becomes_error_job_not_500(tmp_path, pdf_bytes, caplog):
     def boom(job_id):
         raise RuntimeError("no deps")
 
@@ -127,7 +127,9 @@ def test_deps_factory_crash_becomes_error_job_not_500(tmp_path, pdf_bytes):
     r = upload(c, pdf_bytes)
     assert r.status_code == 202
     job = c.get(f"/api/invoices/{r.json()['job_id']}").json()
-    assert job["state"] == "ERROR" and "no deps" in job["error"]
+    assert job["state"] == "ERROR" and job["error"] == "Processing failed (RuntimeError). See server logs."
+    assert "no deps" not in job["error"]
+    assert any(r.exc_info and "no deps" in str(r.exc_info[1]) for r in caplog.records)
 
 
 def test_concurrent_uploads_do_not_mix_invoices(tmp_path, pdf_bytes):       # Review Focus 3

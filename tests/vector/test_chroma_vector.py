@@ -147,3 +147,20 @@ def test_sweep_counts_only_actual_deletions():
     c = Flaky()
     assert sweep_orphan_indexes(c) == 1
     assert c.deleted == ["idx-bbbbbbbbbbbbbbbb"]
+
+
+def test_failed_collection_deletes_are_logged_not_raised(caplog):
+    from ledger_agent.retrieval.chroma_vector import sweep_orphan_indexes
+
+    class Col:
+        name = "idx-aaaaaaaaaaaaaaaa"
+
+    class Client:
+        def list_collections(self):
+            return [Col()]
+
+        def delete_collection(self, name):
+            raise RuntimeError("locked")
+
+    assert sweep_orphan_indexes(Client()) == 0
+    assert any("idx-aaaaaaaaaaaaaaaa" in r.getMessage() for r in caplog.records)

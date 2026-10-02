@@ -30,7 +30,7 @@ def test_run_job_success_stores_json_result_and_deletes_upload(tmp_path):
     assert not pdf.exists()
 
 
-def test_run_job_turns_crashes_into_error_state(tmp_path):
+def test_run_job_turns_crashes_into_error_state(tmp_path, caplog):
     store = new_store()
     pdf = render_invoice(default_spec(), tmp_path / "j1.pdf")
 
@@ -39,7 +39,9 @@ def test_run_job_turns_crashes_into_error_state(tmp_path):
 
     run_job(store, boom, "j1", Path(pdf), "INV-001")
     job = store.get("j1")
-    assert job.state == "ERROR" and "deps exploded" in job.error and job.result is None
+    assert job.state == "ERROR" and job.error == "Processing failed (RuntimeError). See server logs."
+    assert job.result is None
+    assert any(r.exc_info and "deps exploded" in str(r.exc_info[1]) for r in caplog.records)
     assert not pdf.exists()
 
 
@@ -50,3 +52,19 @@ def test_run_job_for_unreadable_pdf_is_a_result_not_an_error(tmp_path):
     run_job(store, deps, "j1", bad, "broken")
     job = store.get("j1")
     assert job.state == "DONE" and job.result["status"] == "FAILED"
+
+
+def test_run_job_never_raises_even_if_unlink_fails(tmp_path, monkeypatch, caplog):
+    store = new_store()
+    pdf = render_invoice(default_spec(), tmp_path / "j1.pdf")
+
+    def boom_unlink(self, missing_ok=False):
+        raise PermissionError("locked")
+
+    def bad_deps(job_id):
+        raise RuntimeError("x")
+
+    monkeypatch.setattr(Path, "unlink", boom_unlink)
+    run_job(store, bad_deps, "j1", Path(pdf), "INV-001")
+    assert store.get("j1").state == "ERROR"
+    assert any("could not remove upload" in r.getMessage() for r in caplog.records)

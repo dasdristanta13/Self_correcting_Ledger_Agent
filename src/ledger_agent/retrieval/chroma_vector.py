@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 
 import numpy as np
@@ -8,6 +9,7 @@ from ledger_agent.models import Chunk
 from ledger_agent.protocols import Embedder
 
 _PREFIX = "idx-"
+_log = logging.getLogger(__name__)
 
 
 def _names(client) -> list[str]:
@@ -26,7 +28,7 @@ def sweep_orphan_indexes(client) -> int:
             client.delete_collection(name)
             deleted += 1
         except Exception:
-            pass
+            _log.warning("could not delete orphan collection %s", name, exc_info=True)
     return deleted
 
 
@@ -93,7 +95,7 @@ class ChromaVectorIndex:
         try:
             self._client.delete_collection(name)
         except Exception:
-            pass                                    # already gone
+            _log.warning("could not delete collection %s on dispose", name, exc_info=True)
 
 
 def chroma_vector_factory(client):

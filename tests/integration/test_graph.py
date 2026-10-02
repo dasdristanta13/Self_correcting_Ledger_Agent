@@ -136,3 +136,27 @@ def test_recursion_limit_scales_and_overflow_is_a_clean_terminal_result(tmp_path
     assert seen["recursion_limit"] == 4 * 10 + 30
     assert res.status == Status.MAX_REVISIONS_EXCEEDED and "recursion" in res.error.lower()
     assert res.ledger is None
+
+
+def test_recursion_overflow_disposes_the_index_built_during_the_run(monkeypatch):
+    import ledger_agent.graph as g
+    from langgraph.errors import GraphRecursionError
+
+    class Idx:
+        disposed = 0
+
+        def dispose(self):
+            Idx.disposed += 1
+
+    class Stub:
+        def __init__(self, d):
+            self.d = d
+
+        def invoke(self, initial, config):
+            self.d.vector_factory("INV", [], None)          # a node built an index, then the graph overflowed
+            raise GraphRecursionError("too deep")
+
+    monkeypatch.setattr(g, "build_graph", lambda d: Stub(d))
+    res = run_invoice("x.pdf", deps(vector_factory=lambda *a, **k: Idx()))
+    assert res.status == Status.MAX_REVISIONS_EXCEEDED
+    assert Idx.disposed == 1

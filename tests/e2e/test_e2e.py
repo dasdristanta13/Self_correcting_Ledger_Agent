@@ -15,6 +15,11 @@ from ledger_agent.testing.corrupt import corrupting_builder
 from ledger_agent.testing.invoices import InvoiceSpec, ItemSpec, default_spec, render_invoice
 
 
+def open_chroma(path):
+    from chromadb.config import Settings
+    return chromadb.PersistentClient(path=str(path), settings=Settings(anonymized_telemetry=False))
+
+
 def wait_done(client, job_id, timeout=60):
     end = time.time() + timeout
     while time.time() < end:
@@ -44,7 +49,7 @@ def test_upload_correct_trace_and_no_leftover_collections(tmp_path):
     trace = c.get(f"/api/invoices/{job['job_id']}/trace").json()
     assert [e["node"] for e in trace][:4] == ["ingest", "extract", "build_index", "build_ledger"]
     assert trace[-1]["node"] == "finalize"
-    client = chromadb.PersistentClient(path=str(data / "chroma"))
+    client = open_chroma(data / "chroma")
     assert list_index_collections(client) == []                              # Review Focus 2
 
 
@@ -55,7 +60,7 @@ def test_failed_run_also_leaves_no_collection(tmp_path):
     spec.items[0].printed_amount = D("1040.00")                             # document itself wrong -> UNRESOLVED
     job = wait_done(c, upload(c, render_invoice(spec, tmp_path / "INV-002.pdf"), "INV-002.pdf"))
     assert job["result"]["status"] == "UNRESOLVED" and job["result"]["corrections"] == []
-    assert list_index_collections(chromadb.PersistentClient(path=str(data / "chroma"))) == []
+    assert list_index_collections(open_chroma(data / "chroma")) == []
     trace = c.get(f"/api/invoices/{job['job_id']}/trace").json()
     nodes = [e["node"] for e in trace]
     assert nodes[:4] == ["ingest", "extract", "build_index", "build_ledger"]
@@ -68,7 +73,7 @@ def test_jobs_survive_restart_and_interrupted_jobs_become_errors(tmp_path):  # R
     data = tmp_path / "data"
     with TestClient(build_app(data)) as c1:                                  # lifespan runs; pool shut down on exit
         done_id = wait_done(c1, upload(c1, render_invoice(default_spec(), tmp_path / "A.pdf"), "A.pdf"))["job_id"]
-        store = ChromaJobStore(chromadb.PersistentClient(path=str(data / "chroma")))
+        store = ChromaJobStore(open_chroma(data / "chroma"))
         store.create(Job(job_id="stuck", filename="stuck.pdf", state="RUNNING",
                          created_at="2026-01-01T00:00:00.000+00:00"))
     del c1, store
@@ -84,7 +89,7 @@ def test_jobs_survive_restart_and_interrupted_jobs_become_errors(tmp_path):  # R
 def test_orphan_collections_are_swept_at_startup(tmp_path):
     data = tmp_path / "data"
     (data / "chroma").mkdir(parents=True)
-    client = chromadb.PersistentClient(path=str(data / "chroma"))
+    client = open_chroma(data / "chroma")
     client.create_collection("idx-deadbeefdeadbeef", embedding_function=None)
     build_app(data)
     assert list_index_collections(client) == []
@@ -121,4 +126,4 @@ def test_concurrent_uploads_keep_invoices_apart(tmp_path):                  # Re
         run_ids |= trace_run_ids
     assert len(run_ids) == 3                                                 # distinct run per job
     assert not barrier.broken
-    assert list_index_collections(chromadb.PersistentClient(path=str(data / "chroma"))) == []
+    assert list_index_collections(open_chroma(data / "chroma")) == []

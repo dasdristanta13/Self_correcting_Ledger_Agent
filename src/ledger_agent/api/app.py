@@ -32,7 +32,7 @@ def invoice_id_from_filename(filename: str | None) -> str:
 def create_app(store: JobStore, deps_factory: Callable[[str], Deps], *, max_upload_mb: float = 20,
                upload_dir=None, executor=None, frontend_dist=None,
                cors_origins=("http://localhost:5173", "http://127.0.0.1:5173"),
-               store_name: str = "memory") -> FastAPI:
+               store_name: str = "memory", on_shutdown=None) -> FastAPI:
     upload_root = Path(upload_dir) if upload_dir else Path(tempfile.mkdtemp(prefix="ledger-uploads-"))
     upload_root.mkdir(parents=True, exist_ok=True)
     own_pool = executor is None
@@ -47,6 +47,8 @@ def create_app(store: JobStore, deps_factory: Callable[[str], Deps], *, max_uplo
         yield
         if own_pool:
             pool.shutdown(wait=False, cancel_futures=True)
+        if on_shutdown is not None:
+            on_shutdown()
 
     app = FastAPI(title="Self-Correcting Ledger Agent", lifespan=lifespan)
 
@@ -127,6 +129,9 @@ def create_app(store: JobStore, deps_factory: Callable[[str], Deps], *, max_uplo
             return err(404, "not_found", "No such job.")
         return store.get_events(job_id)
 
-    if frontend_dist is not None and Path(frontend_dist).is_dir():
-        app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="ui")
+    if frontend_dist is not None:
+        if Path(frontend_dist).is_dir():
+            app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="ui")
+        else:
+            logger.warning("UI not served: %s not found", frontend_dist)
     return app
