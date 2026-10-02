@@ -1,0 +1,45 @@
+{
+  "job_id": "7f3c0d9e5a1b4c2f8e6d1a0b9c8d7e6f",
+  "filename": "INV-001.pdf",
+  "state": "DONE",
+  "created_at": "2026-10-02T09:00:00.000+00:00",
+  "finished_at": "2026-10-02T09:00:01.250+00:00",
+  "error": null,
+  "result": {
+    "invoice_id": "INV-001",
+    "status": "RECONCILED",
+    "iterations": 1,
+    "error": null,
+    "ledger": {
+      "invoice_id": "INV-001", "currency": "USD",
+      "items": [
+        {"id": "line_01", "description": "Industrial Filter", "quantity": "12", "unit_price": "84.50", "amount": "1014.00",
+         "source": {"amount": {"document_id": "INV-001", "page": 1, "table_id": "table_01", "row": 1, "column": "Amount"}}},
+        {"id": "line_02", "description": "Gasket", "quantity": "3", "unit_price": "10.00", "amount": "30.00",
+         "source": {"amount": {"document_id": "INV-001", "page": 1, "table_id": "table_01", "row": 2, "column": "Amount"}}}
+      ],
+      "subtotal": "1044.00", "discount": null, "tax": "104.40",
+      "tax_lines": [{"id": "tax_01", "rate": "0.10", "amount": "104.40", "source": {}}],
+      "shipping": null, "fees": null, "total": "1148.40", "sources": {}
+    },
+    "original_ledger": {
+      "invoice_id": "INV-001", "currency": "USD",
+      "items": [
+        {"id": "line_01", "description": "Industrial Filter", "quantity": "12", "unit_price": "84.50", "amount": "1040.00", "source": {}},
+        {"id": "line_02", "description": "Gasket", "quantity": "3", "unit_price": "10.00", "amount": "30.00", "source": {}}
+      ],
+      "subtotal": "1044.00", "discount": null, "tax": "104.40",
+      "tax_lines": [{"id": "tax_01", "rate": "0.10", "amount": "104.40", "source": {}}],
+      "shipping": null, "fees": null, "total": "1148.40", "sources": {}
+    },
+    "corrections": [
+      {"revision": 1, "field": "items[line_01].amount", "old_value": "1040.00", "new_value": "1014.00",
+       "reason": "Source invoice evidence", "source_page": 1, "source_table": "table_01", "source_row": 1, "confidence": 0.97}
+    ],
+    "evidence": [
+      {"field": "items[line_01].amount", "value": "1014.00", "confidence": 0.97, "chunk_id": "INV-001:line_01",
+       "quote": "Invoice INV-001 | Page 1 | table_01 | Row 1 | line_01\nDescription: Industrial Filter\nQuantity: 12\nUnit Price: 84.50\nAmount: 1,014.00",
+       "source": {"document_id": "INV-001", "page": 1, "table_id": "table_01", "row": 1, "column": "amount"}}
+    ]
+  }
+}

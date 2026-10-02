@@ -1,0 +1,62 @@
+openapi: 3.0.3
+info: {title: Self-Correcting Ledger Agent, version: 1.0.0}
+paths:
+  /api/health:
+    get: {summary: Health, responses: {"200": {description: ok, content: {application/json: {schema: {$ref: "#/components/schemas/Health"}}}}}}
+  /api/invoices:
+    post:
+      summary: Upload an invoice PDF
+      requestBody:
+        required: true
+        content: {multipart/form-data: {schema: {type: object, required: [file], properties: {file: {type: string, format: binary}}}}}
+      responses:
+        "202": {description: accepted, content: {application/json: {schema: {$ref: "#/components/schemas/Accepted"}}}}
+        "413": {description: file too large, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+        "415": {description: not a PDF, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+        "422": {description: no file, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+    get:
+      summary: Recent jobs, newest first
+      parameters: [{name: limit, in: query, schema: {type: integer, default: 50, maximum: 200}}]
+      responses: {"200": {description: ok, content: {application/json: {schema: {type: array, items: {$ref: "#/components/schemas/Job"}}}}}}
+  /api/invoices/{job_id}:
+    get:
+      summary: One job
+      parameters: [{name: job_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: ok, content: {application/json: {schema: {$ref: "#/components/schemas/Job"}}}}
+        "404": {description: unknown job, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+  /api/invoices/{job_id}/trace:
+    get:
+      summary: Trace events of a job
+      parameters: [{name: job_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200": {description: ok, content: {application/json: {schema: {type: array, items: {$ref: "#/components/schemas/TraceEvent"}}}}}
+        "404": {description: unknown job, content: {application/json: {schema: {$ref: "#/components/schemas/Error"}}}}
+components:
+  schemas:
+    Health: {type: object, required: [status, store], properties: {status: {type: string}, store: {type: string}}}
+    Accepted: {type: object, required: [job_id, status], properties: {job_id: {type: string}, status: {type: string, enum: [QUEUED]}}}
+    Error: {type: object, required: [code, message], properties: {code: {type: string}, message: {type: string}}}
+    Job:
+      type: object
+      required: [job_id, filename, state, created_at]
+      properties:
+        job_id: {type: string}
+        filename: {type: string}
+        state: {type: string, enum: [QUEUED, RUNNING, DONE, ERROR]}
+        created_at: {type: string}
+        finished_at: {type: string, nullable: true}
+        error: {type: string, nullable: true}
+        result: {type: object, nullable: true, description: "ReconciliationResult in JSON mode; money values are strings. See contracts/example-job.json."}
+    TraceEvent:
+      type: object
+      required: [run_id, node, started_at, latency_ms]
+      properties:
+        run_id: {type: string}
+        invoice_id: {type: string, nullable: true}
+        node: {type: string}
+        revision: {type: integer}
+        started_at: {type: string}
+        latency_ms: {type: number}
+        status: {type: string, nullable: true}
+        detail: {type: object}
